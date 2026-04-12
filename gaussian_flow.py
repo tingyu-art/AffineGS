@@ -590,7 +590,7 @@ class GaussianVelocityField_Tiled(nn.Module):
             return flow, weight_map, div, vorticity
 
         # ── 普通路径 ───────────────────────────────────────────────────────
-        if device.type == 'cuda' and HAS_GAUSSIAN_RENDER_CUDA::
+        if device.type == 'cuda' and HAS_GAUSSIAN_RENDER_CUDA:
             J_render = J if J is not None else torch.zeros(
                 self.num_gaussians, 2, 2, device=device, dtype=self.mu.dtype
             )
