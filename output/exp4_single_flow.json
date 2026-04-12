@@ -1,0 +1,34 @@
+{
+ "noJ_noD": {
+  "enable_jacobian": false,
+  "density_control": false,
+  "RMSE": 0.024825217202305794,
+  "AEE": 0.021261822432279587,
+  "mean_div": 0.0005168251809664071,
+  "RMSE_vorticity": 0.005207887850701809
+ },
+ "noJ_D": {
+  "enable_jacobian": false,
+  "density_control": true,
+  "RMSE": 0.01667788252234459,
+  "AEE": 0.013318855315446854,
+  "mean_div": 0.0002532789367251098,
+  "RMSE_vorticity": 0.0020791194401681423
+ },
+ "J_noD": {
+  "enable_jacobian": true,
+  "density_control": false,
+  "RMSE": 0.02077934332191944,
+  "AEE": 0.018008437007665634,
+  "mean_div": 0.00042632161057554185,
+  "RMSE_vorticity": 0.0030418583191931248
+ },
+ "J_D": {
+  "enable_jacobian": true,
+  "density_control": true,
+  "RMSE": 0.016559254378080368,
+  "AEE": 0.013310547918081284,
+  "mean_div": 0.00031026656506583095,
+  "RMSE_vorticity": 0.004595373757183552
+ }
+}
