@@ -53,7 +53,12 @@ from typing import List, Optional
 
 from Cmax import ContrastMaximizationLoss
 from utils.flow_classifier import is_turbulence
-from gaussian_render_ext.gaussian_render import gaussian_render_cuda
+try:
+    from gaussian_render_ext.gaussian_render import gaussian_render_cuda
+    HAS_GAUSSIAN_RENDER_CUDA = True
+except Exception:
+    gaussian_render_cuda = None
+    HAS_GAUSSIAN_RENDER_CUDA = False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -585,7 +590,7 @@ class GaussianVelocityField_Tiled(nn.Module):
             return flow, weight_map, div, vorticity
 
         # ── 普通路径 ───────────────────────────────────────────────────────
-        if device.type == 'cuda':
+        if device.type == 'cuda' and HAS_GAUSSIAN_RENDER_CUDA::
             J_render = J if J is not None else torch.zeros(
                 self.num_gaussians, 2, 2, device=device, dtype=self.mu.dtype
             )
