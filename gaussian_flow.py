@@ -51,7 +51,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from Cmax import ContrastMaximizationLoss
+from CMax import ContrastMaximizationLoss
 from utils.flow_classifier import is_turbulence
 try:
     from gaussian_render_ext.gaussian_render import gaussian_render_cuda
@@ -105,7 +105,7 @@ class GaussianFlowConfig:
     W: int = 256                    # 流场分辨率（列）
 
     # ── 模型初始化 ───────────────────────────────────────────────────────────
-    init_n: int = 200               # 初始高斯数量
+    init_n: int = 300               # 初始高斯数量
     tile_size: int = 32             # 分块大小
     density_alpha: float = 0.0      # 事件密度引导权重（0=均匀，1=纯密度）
     enable_jacobian: bool = True    # 是否启用雅可比矩阵参数
@@ -117,11 +117,11 @@ class GaussianFlowConfig:
     phase: List[int] = field(default_factory=lambda: [50, 200, 250])   # 训练阶段分界点 [phase0_end, phase1_end, phase2_end]
 
     # ── 优化器 lr ────────────────────────────────────────────────────────────
-    lr_mu: float = 2.0              # 均值参数学习率
+    lr_mu: float = 3.0              # 均值参数学习率
     lr_j: Optional[float] = None   # Jacobian lr；None = 自动检测（湍流→0.03，其他→0.001）
 
     # ── 损失权重 ─────────────────────────────────────────────────────────────
-    w_div: float = 5             # 散度正则化权重
+    w_div: float = 10             # 散度正则化权重
     w_smooth: float = 0.01          # 涡量平滑正则化权重
 
     # ── log_scale clamp 范围 ─────────────────────────────────────────────────
@@ -130,12 +130,23 @@ class GaussianFlowConfig:
     # ── 密度控制参数 ─────────────────────────────────────────────────────────
     max_clone: int = 50
     max_split: int = 50
-    prune_opacity_thresh: float = 0.1
+    prune_opacity_thresh: float = 0.05
     max_anisotropy: float = 3.0
+    residual_block_size: int = 8
+    residual_min_events_per_block: int = 0
+    clone_residual_quantile: float = 0.3
+    clone_coverage_quantile: float = 0.3
+    split_residual_quantile: float = 0.5
+    split_curvature_quantile: float = 0.5
+    split_scale_quantile: float = 0.7
+    split_scale_shrink: float = 0.7071067811865476   # 1 / sqrt(2)
+    split_offset_factor: float = 0.5
+    split_support_samples: int = 5
+    split_support_extent: float = 1.5
+    split_fallback_topk: int = 8
 
     # ── 事件密度图平滑核 ─────────────────────────────────────────────────────
     density_smooth_k: int = 9
-    clone_candidates_quantile: float = 0.2
 
     # ── Cmax 损失参数 ────────────────────────────────────────────────────────
     cmax_loss_type: str = 'l2_max'
@@ -507,10 +518,21 @@ class GaussianVelocityField_Tiled(nn.Module):
               + 2 * dh * dw * Si_hw.unsqueeze(1)
               + dw * dw * Si_ww.unsqueeze(1))   # [T, P, K]
 
-        gauss_w = (torch.exp(-0.5 * term)
-                   * torch.sigmoid(-2.0 * (term - 14.0)))
-        gauss_w = gauss_w * valid_gmask.unsqueeze(1) * pixel_valid.unsqueeze(2)
-        weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)   # [T, P, K]
+        support_mask = (
+            (term <= 16.0)
+            & valid_gmask.unsqueeze(1)
+            & pixel_valid.unsqueeze(2)
+        )
+        
+        gauss_w = torch.zeros_like(term)
+        gauss_w[support_mask] = torch.exp(-0.5 * term[support_mask])
+        
+        weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)
+        
+        # gauss_w = (torch.exp(-0.5 * term)
+        #            * torch.sigmoid(-2.0 * (term - 14.0)))
+        # gauss_w = gauss_w * valid_gmask.unsqueeze(1) * pixel_valid.unsqueeze(2)
+        # weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)   # [T, P, K]
 
         if cur_J is not None:
             vel_h_aff = cur_J[..., 0, 0].unsqueeze(1) * dh + cur_J[..., 0, 1].unsqueeze(1) * dw
@@ -755,8 +777,15 @@ class GaussianVelocityField_Tiled(nn.Module):
         term    = (dh * dh * Si_hh.unsqueeze(1)
                  + 2 * dh * dw * Si_hw.unsqueeze(1)
                  + dw * dw * Si_ww.unsqueeze(1))
-        gauss_w = torch.exp(-0.5 * term) * torch.sigmoid(-2.0 * (term - 14.0))
-        gauss_w = gauss_w * valid_gmask.unsqueeze(1) * pixel_valid.unsqueeze(2)
+        support_mask = (
+            (term <= 16.0)
+            & valid_gmask.unsqueeze(1)
+            & pixel_valid.unsqueeze(2)
+        )
+        
+        gauss_w = torch.zeros_like(term)
+        gauss_w[support_mask] = torch.exp(-0.5 * term[support_mask])
+        
         weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)
 
         if cur_J is not None:
@@ -856,7 +885,7 @@ def create_optimizer(model, lr_mu, lr_j):
         {'params': [model.mu],            'lr': lr_mu, 'name': "mu"},
         {'params': [model.log_scale],     'lr': 0.05,  'name': "scale"},
         {'params': [model.rotation],      'lr': 0.05,  'name': "rotation"},
-        {'params': [model.opacity_logit], 'lr': 0.1,   'name': "opacity"},
+        {'params': [model.opacity_logit], 'lr': 0.05,   'name': "opacity"},
         {'params': [model.local_velocity],'lr': 0.05,  'name': "velocity"},
     ]
     if hasattr(model, 'J_params') and model.J_params is not None:
@@ -986,20 +1015,107 @@ def sample_maps_at_gaussians(maps, mu, H, W):
 
 def compute_flow_curvature(pred_flow):
     flow4   = pred_flow.unsqueeze(0)
-    sobel_w = _SOBEL_W.to(pred_flow.device)   # ∂/∂w
-    sobel_h = _SOBEL_H.to(pred_flow.device)   # ∂/∂h
+    sobel_w = _SOBEL_W.to(pred_flow.device)
+    sobel_h = _SOBEL_H.to(pred_flow.device)
     gw = F.conv2d(flow4, sobel_w, padding=1, groups=2)
     gh = F.conv2d(flow4, sobel_h, padding=1, groups=2)
-    grad_mean = (gw ** 2 + gh ** 2).sum(dim=1).sqrt().mean()
 
-    lap_ww = flow4[:, :, :, 2:] - 2 * flow4[:, :, :, 1:-1] + flow4[:, :, :, :-2]
-    lap_hh = flow4[:, :, 2:, :] - 2 * flow4[:, :, 1:-1, :] + flow4[:, :, :-2, :]
-    lap_ww = F.pad(lap_ww, (1, 1, 0, 0))
-    lap_hh = F.pad(lap_hh, (0, 0, 1, 1))
-    curv_map  = (lap_ww ** 2 + lap_hh ** 2).sum(dim=1).sqrt().squeeze(0)
-    curv_mean = curv_map.mean()
-    
-    return curv_map
+    grad_map  = (gw ** 2 + gh ** 2).sum(dim=1).sqrt().squeeze(0)
+    return  grad_map
+
+
+def block_reduce_map(x, block_size, reduction='mean'):
+    """将 [H, W] 图按 block_size×block_size 分块聚合为 [Hb, Wb]。"""
+    H, W = x.shape
+    Hb = H // block_size
+    Wb = W // block_size
+    if Hb == 0 or Wb == 0:
+        raise ValueError(f"block_size={block_size} 过大，图像尺寸为 {H}x{W}")
+    x = x[:Hb * block_size, :Wb * block_size]
+    x = x.view(Hb, block_size, Wb, block_size).permute(0, 2, 1, 3)
+    if reduction == 'mean':
+        return x.mean(dim=(2, 3))
+    if reduction == 'max':
+        return x.amax(dim=(2, 3))
+    raise ValueError(f"Unsupported reduction: {reduction}")
+
+
+def robust_normalize(x, valid_mask=None, q_low=0.05, q_high=0.95, eps=1e-8):
+    vals = x[valid_mask] if valid_mask is not None else x.reshape(-1)
+    if vals.numel() == 0:
+        return torch.zeros_like(x)
+    lo = torch.quantile(vals, q_low)
+    hi = torch.quantile(vals, q_high)
+    if (hi - lo).abs() < eps:
+        hi = lo + eps
+    return ((x - lo) / (hi - lo + eps)).clamp(0.0, 1.0)
+
+
+def sample_block_map_at_gaussians(block_map, mu, block_size, H, W):
+    Hb, Wb = block_map.shape
+    bh = (mu[:, 0] / block_size).floor().long().clamp(0, Hb - 1)
+    bw = (mu[:, 1] / block_size).floor().long().clamp(0, Wb - 1)
+    return block_map[bh, bw]
+
+
+def aggregate_block_map_over_gaussian_support(
+    block_map,
+    mu,
+    scales,
+    rotation,
+    block_size,
+    sample_steps=5,
+    support_extent=1.5,
+):
+    """
+    在每个高斯的局部支撑域内采样 block_map，而不是只看高斯中心所在块。
+    返回：
+        weighted_mean : [N]
+        support_max   : [N]
+        support_mix   : [N] = 0.7 * mean + 0.3 * max
+    """
+    device = mu.device
+    dtype = mu.dtype
+    Hb, Wb = block_map.shape
+
+    offs = torch.linspace(-support_extent, support_extent, sample_steps, device=device, dtype=dtype)
+    oh, ow = torch.meshgrid(offs, offs, indexing='ij')
+    local = torch.stack([oh.reshape(-1), ow.reshape(-1)], dim=-1)  # [S, 2], sigma units
+    w = torch.exp(-0.5 * (local[:, 0] ** 2 + local[:, 1] ** 2))
+    w = w / (w.sum() + 1e-8)
+
+    sx = scales[:, 0:1]
+    sy = scales[:, 1:2]
+    r = rotation.squeeze(-1)
+    cos_r = torch.cos(r).unsqueeze(1)
+    sin_r = torch.sin(r).unsqueeze(1)
+
+    local_h = local[:, 0].unsqueeze(0) * sx
+    local_w = local[:, 1].unsqueeze(0) * sy
+
+    off_h = cos_r * local_h - sin_r * local_w
+    off_w = sin_r * local_h + cos_r * local_w
+
+    sample_h = mu[:, 0:1] + off_h
+    sample_w = mu[:, 1:2] + off_w
+
+    bh = (sample_h / block_size).floor().long().clamp(0, Hb - 1)
+    bw = (sample_w / block_size).floor().long().clamp(0, Wb - 1)
+
+    vals = block_map[bh, bw]  # [N, S]
+    weighted_mean = (vals * w.unsqueeze(0)).sum(dim=1)
+    support_max = vals.max(dim=1).values
+    support_mix = 0.7 * weighted_mean + 0.3 * support_max
+    return weighted_mean, support_max, support_mix
+
+
+def block_indices_to_centers(flat_idx, block_map_shape, block_size, device):
+    Hb, Wb = block_map_shape
+    bh = flat_idx // Wb
+    bw = flat_idx % Wb
+    centers_h = (bh.float() + 0.5) * block_size
+    centers_w = (bw.float() + 0.5) * block_size
+    return torch.stack([centers_h, centers_w], dim=1).to(device)
 
 
 def adaptive_density_control(
@@ -1007,143 +1123,299 @@ def adaptive_density_control(
     optimizer,
     pred_flow,
     weight_map,
-    events_map,
-    clone_candidates,
+    events,
+    cmax_loss_fn,
     phase,
-    max_clone             = 50,
-    max_split             = 50,
-    prune_opacity_thresh  = 0.1,
-    max_anisotropy        = 3.0,
-    verbose               = True,
+    max_clone=50,
+    max_split=50,
+    prune_opacity_thresh=0.1,
+    max_anisotropy=3.0,
+    residual_block_size=8,
+    residual_min_events_per_block=0,
+    clone_residual_quantile=0.5,
+    clone_coverage_quantile=0.5,
+    split_residual_quantile=0.4,
+    split_curvature_quantile=0.55,
+    split_scale_quantile=0.7,
+    split_scale_shrink=0.7071067811865476,
+    split_offset_factor=0.5,
+    split_support_samples=5,
+    split_support_extent=1.5,
+    split_fallback_topk=8,
+    verbose=True,
 ):
     device = model.mu.device
-    H, W   = model.H, model.W
+    H, W = model.H, model.W
     margin = model.tile_size // 2
-    use_J  = _has_jacobian(model)
+    use_J = _has_jacobian(model)
 
     with torch.no_grad():
-        mu        = model.mu.detach()
-        opacity   = torch.sigmoid(model.opacity_logit).squeeze(-1)
-        scales    = torch.exp(model.log_scale)
+        mu = model.mu.detach()
+        opacity = torch.sigmoid(model.opacity_logit).squeeze(-1)
+        scales = torch.exp(model.log_scale)
         max_scale = scales.max(dim=1).values
         min_scale = scales.min(dim=1).values.clamp(min=1e-6)
-        v_norm    = model.local_velocity.detach().norm(dim=1)
-        N         = mu.shape[0]
+        anisotropy = max_scale / min_scale
+        finite_mask = (
+            torch.isfinite(mu).all(dim=1) &
+            torch.isfinite(scales).all(dim=1) &
+            torch.isfinite(opacity)
+        )
 
-        flow_curvature = compute_flow_curvature(pred_flow)
+        residual_map, valid_map = cmax_loss_fn.compute_block_temporal_residual(
+            events=events,
+            flow=pred_flow,
+            image_size=(H, W),
+            block_size=residual_block_size,
+            min_events_per_block=residual_min_events_per_block,
+            use_polarity=False,
+            no_grad=True,
+        )
 
-        # ══════ Clone ══════
-        n_clone    = 0
+        coverage_map = torch.log1p(weight_map.squeeze(0).detach())
+        coverage_block = block_reduce_map(coverage_map, residual_block_size, reduction='mean')
+
+        curvature_map = compute_flow_curvature(pred_flow)
+        curvature_map = F.avg_pool2d(
+            torch.log1p(curvature_map).unsqueeze(0).unsqueeze(0),
+            kernel_size=5,
+            stride=1,
+            padding=2,
+        ).squeeze(0).squeeze(0)
+        curvature_block = block_reduce_map(curvature_map, residual_block_size, reduction='mean')
+
+        residual_badness_norm = 1.0 - robust_normalize(residual_map, valid_map)
+        coverage_norm = robust_normalize(coverage_block, valid_map)
+        curvature_norm = robust_normalize(curvature_block, valid_map)
+
+        mask_nonfinite = ~finite_mask
+        mask_geometry = (
+            (max_scale < 0.5) |
+            (max_scale > H / 6) |
+            (anisotropy > max_anisotropy) |
+            (mu[:, 0] < -margin) | (mu[:, 0] > H + margin) |
+            (mu[:, 1] < -margin) | (mu[:, 1] > W + margin)
+        )
+        mask_prune = mask_nonfinite | mask_geometry | (opacity < prune_opacity_thresh)
+        valid_parent = ~mask_prune
+
+        # ══════ Clone：低局部方差 + 低覆盖 ══════
+        n_clone = 0
         clone_dict = None
+        clone_block_mask = None
+        clone_score = None
+        clone_from_parent = 0
+        clone_random_init = 0
+        clone_parent_radius = max(model.tile_size * 1.75, residual_block_size * 2.5)
 
-        if 'clone' in phase and clone_candidates.shape[0] > 0:
-            n_sample     = min(max_clone, clone_candidates.shape[0])
-            perm         = torch.randperm(clone_candidates.shape[0], device=device)[:n_sample]
-            sampled_flat = clone_candidates[perm]
-            clone_y      = sampled_flat // W
-            clone_x      = sampled_flat  % W
+        if 'clone' in phase and valid_map.any():
+            res_vals = residual_map[valid_map]
+            cov_vals = coverage_block[valid_map]
+            res_thresh = torch.quantile(res_vals, clone_residual_quantile)
+            cov_thresh = torch.quantile(cov_vals, clone_coverage_quantile)
 
-            clone_pos = torch.stack([clone_y.float(), clone_x.float()], dim=1)
-            dist_to_existing = torch.cdist(clone_pos, mu)
-            keep      = dist_to_existing.min(dim=1).values > (model.tile_size * 0.2)
-            clone_pos = clone_pos[keep]
-            n_clone   = clone_pos.shape[0]
+            clone_block_mask = (
+                valid_map &
+                (residual_map <= res_thresh) &
+                (coverage_block <= cov_thresh)
+            )
+            clone_score = residual_badness_norm * (1.0 - coverage_norm)
+            candidate_flat = torch.where(clone_block_mask.view(-1))[0]
 
-            if n_clone > 0:
-                nearest  = dist_to_existing[keep].argmin(dim=1)
-                mu_new   = clone_pos + torch.randn_like(clone_pos) * 2.0
+            if candidate_flat.numel() > 0:
+                k = min(max_clone, candidate_flat.numel())
+                top_local = torch.topk(clone_score.view(-1)[candidate_flat], k=k, largest=True).indices
+                top_blocks = candidate_flat[top_local]
+                block_centers = block_indices_to_centers(
+                    top_blocks, clone_score.shape, residual_block_size, device
+                )
+
+                # mu_new = block_centers + torch.randn_like(block_centers) * clone_jitter
+                mu_new = block_centers
+                mu_new[:, 0].clamp_(0.0, H - 1.0)
+                mu_new[:, 1].clamp_(0.0, W - 1.0)
+
+                n_sel = mu_new.shape[0]
+                clone_log_scale = torch.empty((n_sel, 2), device=device, dtype=model.log_scale.dtype)
+                clone_rotation = torch.empty((n_sel, 1), device=device, dtype=model.rotation.dtype)
+                clone_opacity = torch.empty((n_sel, 1), device=device, dtype=model.opacity_logit.dtype)
+                clone_velocity = torch.empty((n_sel, 2), device=device, dtype=model.local_velocity.dtype)
+                clone_jacobian = torch.empty((n_sel, 3), device=device, dtype=model.J_params.dtype) if use_J else None
+
+                in_range = torch.zeros(n_sel, dtype=torch.bool, device=device)
+                nearest_parent = None
+                if valid_parent.any():
+                    parent_idx_all = torch.where(valid_parent)[0]
+                    parent_mu = mu[parent_idx_all]
+                    dmat = torch.cdist(block_centers, parent_mu)
+                    nearest_dist, nearest_local = dmat.min(dim=1)
+                    nearest_parent = parent_idx_all[nearest_local]
+                    in_range = nearest_dist < clone_parent_radius
+
+                if in_range.any():
+                    parent_sel = nearest_parent[in_range]
+                    clone_log_scale[in_range] = model.log_scale.data[parent_sel].clone()
+                    clone_rotation[in_range] = model.rotation.data[parent_sel].clone()
+                    clone_opacity[in_range] = model.opacity_logit.data[parent_sel].clone()
+                    clone_velocity[in_range] = model.local_velocity.data[parent_sel].clone()
+                    if use_J:
+                        clone_jacobian[in_range] = model.J_params.data[parent_sel].clone()
+                    clone_from_parent = int(in_range.sum().item())
+
+                random_mask = ~in_range
+                if random_mask.any():
+                    n_rand = int(random_mask.sum().item())
+                    clone_log_scale[random_mask] = torch.stack([
+                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(10.0),
+                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(7.0),
+                    ], dim=1)
+                    clone_rotation[random_mask] = torch.rand(
+                        n_rand, 1, device=device, dtype=model.rotation.dtype
+                    ) * torch.pi
+                    clone_opacity[random_mask] = torch.zeros(
+                        n_rand, 1, device=device, dtype=model.opacity_logit.dtype
+                    )
+                    clone_velocity[random_mask] = torch.randn(
+                        n_rand, 2, device=device, dtype=model.local_velocity.dtype
+                    )
+                    if use_J:
+                        clone_jacobian[random_mask] = 0.05 * torch.randn(
+                            n_rand, 3, device=device, dtype=model.J_params.dtype
+                        )
+                    clone_random_init = n_rand
+
                 clone_dict = {
-                    'mu':       mu_new,
-                    'scale':    model.log_scale.data[nearest].clone(),
-                    'rotation': model.rotation.data[nearest].clone(),
-                    'opacity':  torch.zeros(n_clone, 1, device=device),
-                    'velocity': model.local_velocity.data[nearest].clone(),
-                    'jacobian': model.J_params.data[nearest].clone() if use_J else None,
+                    'mu': mu_new,
+                    'scale': clone_log_scale,
+                    'rotation': clone_rotation,
+                    'opacity': clone_opacity,
+                    'velocity': clone_velocity,
+                    'jacobian': clone_jacobian if use_J else None,
                 }
+                n_clone = n_sel
 
-        # ══════ Split ══════
-        n_split    = 0
+        # ══════ Split：低局部方差 + 高曲率 + 大高斯（基于支撑域聚合，不只看中心） ══════
+        n_split = 0
         split_dict = None
-        # 以下变量仅在 split 分支内赋值，verbose 打印守卫在同一分支内
-        curv_thresh       = None
-        mask_high_curv    = None
-        mask_lowvel_large = None
+        split_mask = None
+        residual_support = None
+        curvature_support = None
+        scale_norm = None
 
-        if 'split' in phase:
-            flow_curvature_smooth = F.avg_pool2d(
-                flow_curvature[None, None], 5, stride=1, padding=2
-            ).squeeze()
-            flow_mag = pred_flow.norm(dim=0)
-
-            curvature_at_mu, flowmag_at_mu = sample_maps_at_gaussians(
-                [flow_curvature_smooth, flow_mag], mu, H, W
+        if 'split' in phase and valid_parent.any():
+            _, _, residual_support = aggregate_block_map_over_gaussian_support(
+                residual_map,
+                mu,
+                scales,
+                model.rotation.detach(),
+                residual_block_size,
+                sample_steps=split_support_samples,
+                support_extent=split_support_extent,
+            )
+            _, _, curvature_support = aggregate_block_map_over_gaussian_support(
+                curvature_block,
+                mu,
+                scales,
+                model.rotation.detach(),
+                residual_block_size,
+                sample_steps=split_support_samples,
+                support_extent=split_support_extent,
             )
 
-            large_gaussian = max_scale > max_scale.quantile(0.8)
+            residual_support_badness_norm = 1.0 - robust_normalize(residual_support, valid_parent)
+            curvature_support_norm = robust_normalize(curvature_support, valid_parent)
+            scale_norm = robust_normalize(max_scale, valid_parent)
 
-            mask_high_curv    = (curvature_at_mu > curvature_at_mu.quantile(0.8)) & large_gaussian
-            mask_lowvel_large = (
-                (flowmag_at_mu < flowmag_at_mu.median()) & large_gaussian
+            def _quantile(vals, q):
+                q = float(max(0.0, min(1.0, q)))
+                return torch.quantile(vals, q)
+
+            valid_res = residual_support[valid_parent]
+            valid_curv = curvature_support[valid_parent]
+            valid_scale = max_scale[valid_parent]
+
+            res_thresh = _quantile(valid_res, split_residual_quantile)
+            curv_thresh = _quantile(valid_curv, split_curvature_quantile)
+            scale_thresh = _quantile(valid_scale, split_scale_quantile)
+
+            split_mask = (
+                valid_parent &
+                (residual_support <= res_thresh) &
+                (curvature_support >= curv_thresh) &
+                (max_scale >= scale_thresh)
             )
-            mask_split    = mask_high_curv | mask_lowvel_large
-            split_indices = torch.where(mask_split)[0]
 
-            if split_indices.shape[0] > max_split:
-                topk          = torch.topk(curvature_at_mu[split_indices], max_split).indices
-                split_indices = split_indices[topk]
+            split_score = residual_support_badness_norm * curvature_support_norm * scale_norm
+            split_indices = torch.where(split_mask)[0]
 
-            n_split = split_indices.shape[0]
 
-            if n_split > 0:
-                mu_s            = model.mu.data[split_indices].clone()
-                r               = model.rotation.data[split_indices].squeeze(-1)
-                axis            = torch.stack([torch.cos(r), torch.sin(r)], dim=-1)
-                child_log_scale = model.log_scale.data[split_indices] - 0.5 * np.log(2.0)
-                child_scale     = torch.exp(child_log_scale)
-                child_max_s     = child_scale.max(dim=1, keepdim=True).values
-                
-                # 用更保守一点的偏移，避免一下子分太开
-                offset = axis * (0.5 * child_max_s)
-                
+            if split_indices.numel() > 0:
+                k = min(max_split, split_indices.numel())
+                top_local = torch.topk(split_score[split_indices], k=k, largest=True).indices
+                split_indices = split_indices[top_local]
+                n_split = split_indices.shape[0]
+
                 mu_center = model.mu.data[split_indices].clone()
-                
-                # parent 也缩小
-                model.mu.data[split_indices] = mu_center + offset
+                r = model.rotation.data[split_indices].squeeze(-1)
+                axis = torch.stack([torch.cos(r), torch.sin(r)], dim=-1)
+
+                child_log_scale = model.log_scale.data[split_indices].clone() + float(np.log(split_scale_shrink))
+                child_scale = torch.exp(child_log_scale)
+                child_major = child_scale.max(dim=1, keepdim=True).values
+
+                offset = axis * (split_offset_factor * child_major)
+
+                parent_new_mu = mu_center + offset
+                child_mu = mu_center - offset
+                parent_new_mu[:, 0].clamp_(0.0, H - 1.0)
+                parent_new_mu[:, 1].clamp_(0.0, W - 1.0)
+                child_mu[:, 0].clamp_(0.0, H - 1.0)
+                child_mu[:, 1].clamp_(0.0, W - 1.0)
+
+                model.mu.data[split_indices] = parent_new_mu
                 model.log_scale.data[split_indices] = child_log_scale.clone()
-                
+                model.opacity_logit.data[split_indices] = model.opacity_logit.data[split_indices]
+
                 split_dict = {
-                    'mu':       mu_center - offset,
-                    'scale':    child_log_scale.clone(),
+                    'mu': child_mu,
+                    'scale': child_log_scale.clone(),
                     'rotation': model.rotation.data[split_indices].clone(),
-                    'opacity':  model.opacity_logit.data[split_indices].clone(),
+                    'opacity': model.opacity_logit.data[split_indices].clone(),
                     'velocity': model.local_velocity.data[split_indices].clone(),
                     'jacobian': model.J_params.data[split_indices].clone() if use_J else None,
                 }
 
-        # ══════ Prune mask ══════
-        mask_geometry = (
-            (max_scale < 0.5)                               |
-            (max_scale > H / 6)                             |
-            ((max_scale / min_scale) > max_anisotropy)      |
-            (mu[:, 0] < -margin) | (mu[:, 0] > H + margin) |
-            (mu[:, 1] < -margin) | (mu[:, 1] > W + margin)
-        )
-
-        mask_prune = (opacity < prune_opacity_thresh) | mask_geometry
-
-    if verbose:
-        if 'clone' in phase:
-            print(f"  [Clone] candidates={clone_candidates.shape[0]}  after_filter={n_clone}")
-        if 'split' in phase:
-            curv_info = (f"curv_thresh={curv_thresh:.4f}  "
-                         f"high_curv={mask_high_curv.sum().item()}  "
-                         f"low_vel_large={mask_lowvel_large.sum().item()}"
-                         if curv_thresh is not None else "curv=zero(fallback)")
-            print(f"total_triggered={n_split}  ")
-        if 'prune' in phase:
-            print(f"  [Prune] opacity_mean={opacity.mean():.3f}  "
-                  f"geometry={mask_geometry.sum().item()}  "
-                  f"total={mask_prune.sum().item()}")
+        if verbose:
+            valid_blocks = int(valid_map.sum().item())
+            res_mean = residual_map[valid_map].mean().item() if valid_map.any() else 0.0
+            cov_mean = coverage_block[valid_map].mean().item() if valid_map.any() else 0.0
+            curv_mean = curvature_block[valid_map].mean().item() if valid_map.any() else 0.0
+            print(
+                f"  [DensityCtrl] valid_blocks={valid_blocks}  "
+                f"localvar_mean={res_mean:.4f}  cov_mean={cov_mean:.4f}  curv_mean={curv_mean:.4f}"
+            )
+            if 'clone' in phase:
+                clone_cands = int(clone_block_mask.sum().item()) if clone_block_mask is not None else 0
+                print(
+                    f"  [Clone] block_candidates={clone_cands}  selected={n_clone}  "
+                    f"copied={clone_from_parent}  random={clone_random_init}  radius={clone_parent_radius:.1f}"
+                )
+            if 'split' in phase:
+                split_cands = int(split_mask.sum().item()) if split_mask is not None else 0
+                if residual_support is not None and curvature_support is not None:
+                    print(
+                        f"gaussian_candidates={split_cands}  selected={n_split}  "
+                        f"res_support_mean={residual_support[valid_parent].mean().item():.4f}  "
+                        f"curv_support_mean={curvature_support[valid_parent].mean().item():.4f}"
+                    )
+                else:
+                    print(f"gaussian_candidates={split_cands}  selected={n_split}")
+            if 'prune' in phase:
+                print(
+                    f"  [Prune] opacity={int((opacity < prune_opacity_thresh).sum().item())}  "
+                    f"geometry={int(mask_geometry.sum().item())}  nonfinite={int(mask_nonfinite.sum().item())}  "
+                    f"total={int(mask_prune.sum().item())}"
+                )
 
     # ══════ 执行：Clone → Split → Prune ══════
     has_changed = False
@@ -1154,24 +1426,20 @@ def adaptive_density_control(
 
     if n_split > 0 and split_dict is not None:
         append_gaussians(model, optimizer, split_dict)
-        
         has_changed = True
 
     n_pruned = 0
     if 'prune' in phase:
-        current_N  = model.num_gaussians
+        current_N = model.num_gaussians
         prune_full = torch.zeros(current_N, dtype=torch.bool, device=device)
-        prune_full[:N] = mask_prune
-
+        prune_full[:mu.shape[0]] = mask_prune
         if prune_full.any():
-            n_pruned       = prune_full.sum().item()
-        
+            n_pruned = int(prune_full.sum().item())
             prune_gaussians(model, optimizer, prune_full)
-            has_changed    = True
+            has_changed = True
 
     if verbose:
-        print(f"  [{phase}] Clone:{n_clone}  Split:{n_split}  "
-              f"Prune:{n_pruned}  -> N={model.num_gaussians}")
+        print(f"  [{phase}] Clone:{n_clone}  Split:{n_split}  Prune:{n_pruned}  -> N={model.num_gaussians}")
 
     return has_changed
 
@@ -1322,8 +1590,6 @@ def train_gaussian_flow(
 
     events_map = build_event_density_map(
         events, cfg.H, cfg.W, smooth_k=cfg.density_smooth_k, device=device)
-    clone_candidates = precompute_clone_candidates(
-        events_map, quantile=cfg.clone_candidates_quantile)
 
     model = GaussianVelocityField_Tiled(
         num_gaussians   = cfg.init_n,
@@ -1401,18 +1667,30 @@ def train_gaussian_flow(
             phase_flag = decide_phase(i, cfg.phase)
             if phase_flag:
                 has_changed = adaptive_density_control(
-                    model            = model,
-                    optimizer        = optimizer,
-                    pred_flow        = pred_flow.detach(),
-                    weight_map       = weight_map.detach(),
-                    events_map       = events_map,
-                    clone_candidates = clone_candidates,
-                    phase            = phase_flag,
-                    max_clone             = cfg.max_clone,
-                    max_split             = cfg.max_split,
+                    model                    = model,
+                    optimizer                = optimizer,
+                    pred_flow                = pred_flow.detach(),
+                    weight_map               = weight_map.detach(),
+                    events                   = events,
+                    cmax_loss_fn             = cmax_loss_fn,
+                    phase                    = phase_flag,
+                    max_clone                = cfg.max_clone,
+                    max_split                = cfg.max_split,
                     prune_opacity_thresh     = cfg.prune_opacity_thresh,
-                    max_anisotropy        = cfg.max_anisotropy,
-                    verbose               = cfg.verbose,
+                    max_anisotropy           = cfg.max_anisotropy,
+                    residual_block_size      = cfg.residual_block_size,
+                    residual_min_events_per_block = cfg.residual_min_events_per_block,
+                    clone_residual_quantile  = cfg.clone_residual_quantile,
+                    clone_coverage_quantile  = cfg.clone_coverage_quantile,
+                    split_residual_quantile  = cfg.split_residual_quantile,
+                    split_curvature_quantile = cfg.split_curvature_quantile,
+                    split_scale_quantile     = cfg.split_scale_quantile,
+                    split_scale_shrink       = cfg.split_scale_shrink,
+                    split_offset_factor      = cfg.split_offset_factor,
+                    split_support_samples    = cfg.split_support_samples,
+                    split_support_extent     = cfg.split_support_extent,
+                    split_fallback_topk      = cfg.split_fallback_topk,
+                    verbose                  = cfg.verbose,
                 )
                 if has_changed:
                     model.rebuild_indexer()

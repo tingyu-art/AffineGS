@@ -184,16 +184,42 @@ import json
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.lines import Line2D
 
-def plot_boxplot(file_path, metric='rmse', save_path=None, 
-    ylabel_en=None, ylabel_zh=None,
-    xlabel_en='Methods', xlabel_zh='方法',
-    title_en=None, title_zh=None,
-    box_width=0.6, y_lim=None, 
-    label_size=12, tick_size=10, 
-    grid=True, use_chinese=False
+
+def _infer_dataset_name(file_path):
+    """
+    根据输入文件路径自动提取数据集名称。
+    默认取文件名（去掉扩展名）。
+    例如:
+        /xxx/JHTDB.json   -> JHTDB
+        /xxx/dns_flow.json -> dns_flow
+    """
+    return os.path.splitext(os.path.basename(file_path))[0]
+
+
+def plot_boxplot(
+    file_path,
+    metric='rmse',
+    save_path=None,
+    ylabel_en=None,
+    ylabel_zh=None,
+    xlabel_en='Methods',
+    xlabel_zh='方法',
+    title_en=None,
+    title_zh=None,
+    box_width=0.6,
+    y_lim=None,
+    label_size=12,
+    tick_size=10,
+    grid=True,
+    use_chinese=False,
+    dataset_name=None,          # 新增：可手动指定图例名称
+    legend_loc='upper right',   # 新增：图例位置
+    legend_line_color='black',  # 新增：图例横线颜色
+    legend_line_width=1.5,      # 新增：图例横线宽度
 ):
-    # ===================== 读取你保存的 JSON =====================
+    # ===================== 读取 JSON =====================
     with open(file_path, 'r', encoding='utf-8') as f:
         final_results = json.load(f)
 
@@ -204,16 +230,19 @@ def plot_boxplot(file_path, metric='rmse', save_path=None,
     # ===================== 正确提取数据 =====================
     data = []
     all_values = []
-    
-    # 按方法遍历 → 收集所有文件的 metric 值
+
     for method in method_names:
         values = []
         for file_key in final_results:
             metric_val = final_results[file_key][method][metric]
             values.append(metric_val)
-        
+
         data.append(values)
         all_values.extend(values)
+
+    # ===================== 自动获取数据集名称 =====================
+    if dataset_name is None:
+        dataset_name = _infer_dataset_name(file_path)
 
     # ===================== 字体设置 =====================
     plt.rcParams['font.family'] = "Arial"
@@ -241,7 +270,6 @@ def plot_boxplot(file_path, metric='rmse', save_path=None,
         medianprops=dict(color='orange', linewidth=1.5),
         whiskerprops=dict(color='black', linewidth=1.0),
         capprops=dict(color='black', linewidth=1.0),
-        # flierprops=dict(marker='o', color='black', alpha=0.6, markersize=3),
         ax=ax
     )
 
@@ -274,7 +302,31 @@ def plot_boxplot(file_path, metric='rmse', save_path=None,
     elif all_values:
         min_val, max_val = min(all_values), max(all_values)
         range_val = max_val - min_val
-        ax.set_ylim(min_val - 0.1 * range_val, max_val + 0.1 * range_val)
+        if range_val == 0:
+            ax.set_ylim(min_val - 0.1, max_val + 0.1)
+        else:
+            ax.set_ylim(min_val - 0.1 * range_val, max_val + 0.1 * range_val)
+
+    # ===================== 增加图例 =====================
+    legend_handle = Line2D(
+        [0], [0],
+        color=legend_line_color,
+        lw=legend_line_width,
+        linestyle='-'
+    )
+    ax.legend(
+        handles=[legend_handle],
+        labels=[dataset_name],
+        loc=legend_loc,
+        frameon=True,           # 打开边框
+        fancybox=True,          # 圆角框，和你图里类似
+        framealpha=1.0,         # 不透明
+        edgecolor='0.75',       # 边框颜色
+        facecolor='white',      # 框内背景色
+        handlelength=2.0,
+        handletextpad=0.6,
+        borderaxespad=0.4
+    )
 
     plt.tight_layout()
 
@@ -490,51 +542,110 @@ def plot_vortex_line_panel(
 
     plt.show()
 
-def plot_exp111(data, metric="rmse"):
-    
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
+
+def plot_exp111(data, flow_names, metric="rmse", save_path=None):
     assert metric in ["rmse", "aee"], "metric 必须是 rmse 或 aee"
 
-    plt.figure(figsize=(5, 3))
+    flow_keys  = ["flow0", "flow1", "flow2"]
 
-    for i, flow_index in enumerate(range(3)):
+    fig, ax = plt.subplots(figsize=(5, 3))
 
-        flow_name = f"flow{flow_index}"
-        assert flow_name in data, f"{flow_name} 不存在"
-
-        flow_data = data[flow_name]
+    # ===== 主曲线 =====
+    for i, flow_key in enumerate(flow_keys):
+        assert flow_key in data, f"{flow_key} 不存在"
+        flow_data = data[flow_key]
 
         for jac_key in ["1", "0"]:
-
-            assert jac_key in flow_data, f"{flow_name} 缺少 jacobian={jac_key}"
+            assert jac_key in flow_data, f"{flow_key} 缺少 jacobian={jac_key}"
 
             sub_data = flow_data[jac_key]
-
             xs = sorted([int(k) for k in sub_data.keys()])
             ys = [sub_data[str(x)][metric] for x in xs]
 
-            # 👉 线型控制
             linestyle = "-" if jac_key == "1" else "--"
 
-            label = f"{flow_name} | jac={jac_key}"
-
-            plt.plot(
+            ax.plot(
                 xs,
                 ys,
                 linestyle=linestyle,
                 marker=markers[i],
-                color= colors[i],
-                label=label
+                color=colors[i],
+                linewidth=1.5,
+                markersize=6,
             )
 
-    # ========= 图形设置 =========
-    plt.xlabel("Number of Gaussians (init_n)")
-    plt.ylabel(metric.upper())
-    # plt.title(f"{metric.upper()} vs Gaussian Number (Multi-Flow)")
-    plt.legend()
-    plt.yscale("log")
-    plt.grid(True)
+    # ===== 坐标轴 =====
+    ax.set_xlabel("Number of Gaussians (init_n)", fontsize=12)
+    ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=12)
+
+    ax.set_yscale("log")
+    ax.set_ylim([1e-1, 1e0])
+
+    # 保留所有 log 刻度线
+    ax.yaxis.set_major_locator(LogLocator(base=10.0))
+    ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2,3,4,5,6,7,8,9)))
+
+    # 只显示 10^0 和 10^-1，其他刻度值隐藏
+    def y_major_formatter(y, pos):
+        if abs(y - 1e0) < 1e-12:
+            return r"$10^{0}$"
+        elif abs(y - 1e-1) < 1e-12:
+            return r"$10^{-1}$"
+        return ""
+
+    ax.yaxis.set_major_formatter(FuncFormatter(y_major_formatter))
+    ax.yaxis.set_minor_formatter(NullFormatter())  # 次刻度不显示文字
+
+    # grid: 主次刻度线都保留
+    ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
+    ax.grid(True, which="minor", axis="y", linestyle="--", alpha=0.25)
+
+    # ===== 图例：拆成两个独立图例 =====
+    color_handles = [
+        mlines.Line2D([], [], color=colors[0], marker=markers[0], linestyle='None',
+                      markersize=6, label=flow_names[0]),
+        mlines.Line2D([], [], color=colors[1], marker=markers[1], linestyle='None',
+                      markersize=6, label=flow_names[1]),
+        mlines.Line2D([], [], color=colors[2], marker=markers[2], linestyle='None',
+                      markersize=6, label=flow_names[2]),
+    ]
+
+    style_handles = [
+        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=1.5, label='w-J'),
+        mlines.Line2D([], [], color='black', linestyle='--', linewidth=1.5, label='w/o-J'),
+    ]
+
+    # 左侧：颜色图例
+    legend1 = ax.legend(
+        handles=color_handles,
+        loc="upper right",
+        bbox_to_anchor=(1.0, 1.02),
+        frameon=True,
+        borderpad=0.3,
+        handletextpad=0.5,
+        labelspacing=0.4,
+    )
+    ax.add_artist(legend1)
+
+    # 右侧：线型图例
+    ax.legend(
+        handles=style_handles,
+        loc="upper right",
+        bbox_to_anchor=(0.6, 1.02),
+        frameon=True,
+        borderpad=0.3,
+        handletextpad=0.6,
+        labelspacing=0.4,
+    )
 
     plt.tight_layout()
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
     plt.show()
 
 def analyze_error(pred_flow, gt_flow, flow_names, n_bins=5):
@@ -586,10 +697,8 @@ def analyze_error(pred_flow, gt_flow, flow_names, n_bins=5):
     plt.tight_layout()
     plt.show()
 
-
-
 # ================= 图2：训练损失曲线 =================
-def plot_loss_curves(history, flow_names, num_curves=3):
+def plot_loss_curves(history, flow_names, num_curves=3, save_path=None):
     """
     history: 包含 'total' 键的字典列表，或直接是损失值列表
     num_curves: 要绘制的曲线数量（取前几个）
@@ -604,10 +713,14 @@ def plot_loss_curves(history, flow_names, num_curves=3):
             loss = [loss]
         plt.plot(range(len(loss)), loss, linewidth=1.5, label=f'Run {i+1}')
     
-    plt.xlabel("Iterations")
-    plt.ylabel("Total loss")
+    plt.xlabel("Iterations", fontsize=12)
+    plt.ylabel("Total loss", fontsize=12)
     plt.legend(flow_names)
     plt.xlim([-5, 305])
+    plt.ylim([-9, -3])
     plt.grid(True, alpha=0.8)
     plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    
     plt.show()

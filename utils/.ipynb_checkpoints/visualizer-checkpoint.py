@@ -144,7 +144,7 @@ def plot_event_time2d(events, output_file=None, vmin=None, vmax=None):
     if output_file is not None:
         plt.savefig(output_file, bbox_inches='tight', pad_inches=0.1)
         print(f"Figure saved to {output_file}")
-    plt.title('2D Event Time Visualization')
+    # plt.title('2D Event Time Visualization')
     plt.show()
 
 
