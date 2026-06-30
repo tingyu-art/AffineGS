@@ -122,7 +122,8 @@ class GaussianFlowConfig:
 
     # ── 损失权重 ─────────────────────────────────────────────────────────────
     w_div: float = 10             # 散度正则化权重
-    w_smooth: float = 0.01          # 涡量平滑正则化权重
+    div_last: int = 500
+    w_smooth: float = 0.01
 
     # ── log_scale clamp 范围 ─────────────────────────────────────────────────
     log_scale_min: float = np.log(0.5)
@@ -139,7 +140,7 @@ class GaussianFlowConfig:
     split_residual_quantile: float = 0.5
     split_curvature_quantile: float = 0.5
     split_scale_quantile: float = 0.7
-    split_scale_shrink: float = 0.7071067811865476   # 1 / sqrt(2)
+    split_scale_shrink: float = 0.7071   # 1 / sqrt(2)
     split_offset_factor: float = 0.5
     split_support_samples: int = 5
     split_support_extent: float = 1.5
@@ -349,7 +350,7 @@ class GaussianVelocityField_Tiled(nn.Module):
         self.local_velocity = nn.Parameter(torch.randn(num_gaussians, 2, device=device))
 
         if enable_jacobian:
-            self.J_params = nn.Parameter(0.05 * torch.randn(num_gaussians, 3, device=device))
+            self.J_params = nn.Parameter(0.05 * torch.randn(num_gaussians, 4, device=device))
         else:
             self.register_parameter("J_params", None)
 
@@ -442,10 +443,10 @@ class GaussianVelocityField_Tiled(nn.Module):
         #   J_local = [[ a,  b ],   ∂vel_h/∂(h,w)
         #              [ c, -a ]]   ∂vel_w/∂(h,w)   → 散度 = a+(-a) = 0
         if _has_jacobian(self):
-            a, b, c = self.J_params.unbind(-1)
+            a, b, c, d = self.J_params.unbind(-1)
             J_local = torch.stack([
-                torch.stack([ a,  b], dim=-1),
-                torch.stack([ c, -a], dim=-1)
+                torch.stack([ a, b], dim=-1),
+                torch.stack([ c, d], dim=-1)
             ], dim=-2)
             J = torch.bmm(R, torch.bmm(J_local, R.transpose(1, 2)))
         else:
@@ -687,10 +688,10 @@ class GaussianVelocityField_Tiled(nn.Module):
         vel_global = torch.matmul(R, self.local_velocity.unsqueeze(-1)).squeeze(-1)
 
         if _has_jacobian(self):
-            a, b, c = self.J_params.unbind(-1)
+            a, b, c, d = self.J_params.unbind(-1)
             J_local = torch.stack([
                 torch.stack([ a,  b], dim=-1),
-                torch.stack([ c, -a], dim=-1)
+                torch.stack([ c, d], dim=-1)
             ], dim=-2)
             J = torch.bmm(R, torch.bmm(J_local, R.transpose(1, 2)))
         else:
@@ -1126,22 +1127,22 @@ def adaptive_density_control(
     events,
     cmax_loss_fn,
     phase,
-    max_clone=50,
-    max_split=50,
-    prune_opacity_thresh=0.1,
-    max_anisotropy=3.0,
-    residual_block_size=8,
-    residual_min_events_per_block=0,
-    clone_residual_quantile=0.5,
-    clone_coverage_quantile=0.5,
-    split_residual_quantile=0.4,
-    split_curvature_quantile=0.55,
-    split_scale_quantile=0.7,
-    split_scale_shrink=0.7071067811865476,
-    split_offset_factor=0.5,
-    split_support_samples=5,
-    split_support_extent=1.5,
-    split_fallback_topk=8,
+    max_clone,
+    max_split,
+    prune_opacity_thresh,
+    max_anisotropy,
+    residual_block_size,
+    residual_min_events_per_block,
+    clone_residual_quantile,
+    clone_coverage_quantile,
+    split_residual_quantile,
+    split_curvature_quantile,
+    split_scale_quantile,
+    split_scale_shrink,
+    split_offset_factor,
+    split_support_samples,
+    split_support_extent,
+    split_fallback_topk,
     verbose=True,
 ):
     device = model.mu.device
@@ -1240,7 +1241,7 @@ def adaptive_density_control(
                 clone_rotation = torch.empty((n_sel, 1), device=device, dtype=model.rotation.dtype)
                 clone_opacity = torch.empty((n_sel, 1), device=device, dtype=model.opacity_logit.dtype)
                 clone_velocity = torch.empty((n_sel, 2), device=device, dtype=model.local_velocity.dtype)
-                clone_jacobian = torch.empty((n_sel, 3), device=device, dtype=model.J_params.dtype) if use_J else None
+                clone_jacobian = torch.empty((n_sel, 4), device=device, dtype=model.J_params.dtype) if use_J else None
 
                 in_range = torch.zeros(n_sel, dtype=torch.bool, device=device)
                 nearest_parent = None
@@ -1280,7 +1281,7 @@ def adaptive_density_control(
                     )
                     if use_J:
                         clone_jacobian[random_mask] = 0.05 * torch.randn(
-                            n_rand, 3, device=device, dtype=model.J_params.dtype
+                            n_rand, 4, device=device, dtype=model.J_params.dtype
                         )
                     clone_random_init = n_rand
 
@@ -1522,7 +1523,7 @@ def _resolve_lr_j(events_map, cfg: GaussianFlowConfig,
 
     if supervised:
         if cfg.verbose:
-            print("[AutoLR] supervised mode  ->  lr_jacobian = 0.001")
+            print("[AutoLR] supervised mode  ->  lr_jacobian = 0.05")
         return 0.001
 
     turb = is_turbulence(events_map)
@@ -1637,8 +1638,13 @@ def train_gaussian_flow(
         else:
             loss_data = cmax_loss_fn(events, pred_flow, (cfg.H, cfg.W))
 
+        if i < cfg.div_last:
+            weight_div = cfg.w_div
+        else:
+            weight_div = 0
+            
         smooth_loss, div_loss = flow_regularizer(pred_flow)
-        total_loss             = loss_data + cfg.w_div * div_loss + cfg.w_smooth * smooth_loss
+        total_loss             = loss_data + weight_div * div_loss + cfg.w_smooth * smooth_loss
 
         total_loss.backward()
 
