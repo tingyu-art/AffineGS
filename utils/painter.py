@@ -544,64 +544,92 @@ def plot_vortex_line_panel(
 
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
+from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter, MaxNLocator
 
-def plot_exp111(data, flow_names, metric="rmse", save_path=None):
+def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto"):
     assert metric in ["rmse", "aee"], "metric 必须是 rmse 或 aee"
 
     flow_keys  = ["flow0", "flow1", "flow2"]
+    style_names = {"1": "w-J", "0": "w/o-J"}
+
+    series = []
+    all_x = []
+    all_y = []
+    for i, flow_key in enumerate(flow_keys):
+        assert flow_key in data, f"{flow_key} 不存在"
+        flow_data = data[flow_key]
+        for jac_key in ["1", "0"]:
+            assert jac_key in flow_data, f"{flow_key} 缺少 jacobian={jac_key}"
+            sub_data = flow_data[jac_key]
+            xs = np.array(sorted([int(k) for k in sub_data.keys()]), dtype=float)
+            ys = np.array([sub_data[str(int(x))][metric] for x in xs], dtype=float)
+            series.append((i, jac_key, xs, ys))
+            all_x.extend(xs.tolist())
+            all_y.extend(ys.tolist())
+
+    all_x = np.array(all_x, dtype=float)
+    all_y = np.array(all_y, dtype=float)
+    valid_y = all_y[np.isfinite(all_y) & (all_y > 0)]
+    if valid_y.size == 0:
+        raise ValueError(f"{metric} 没有可绘制的正数数据")
+
+    y_min = float(valid_y.min())
+    y_max = float(valid_y.max())
+    data_ratio = y_max / max(y_min, 1e-12)
+    use_log_y = (y_scale == "log") or (y_scale == "auto" and data_ratio >= 5.0)
 
     fig, ax = plt.subplots(figsize=(5, 3))
 
     # ===== 主曲线 =====
-    for i, flow_key in enumerate(flow_keys):
-        assert flow_key in data, f"{flow_key} 不存在"
-        flow_data = data[flow_key]
-
-        for jac_key in ["1", "0"]:
-            assert jac_key in flow_data, f"{flow_key} 缺少 jacobian={jac_key}"
-
-            sub_data = flow_data[jac_key]
-            xs = sorted([int(k) for k in sub_data.keys()])
-            ys = [sub_data[str(x)][metric] for x in xs]
-
-            linestyle = "-" if jac_key == "1" else "--"
-
-            ax.plot(
-                xs,
-                ys,
-                linestyle=linestyle,
-                marker=markers[i],
-                color=colors[i],
-                linewidth=1.5,
-                markersize=6,
-            )
+    for i, jac_key, xs, ys in series:
+        linestyle = "-" if jac_key == "1" else "--"
+        ax.plot(
+            xs,
+            ys,
+            linestyle=linestyle,
+            marker=markers[i],
+            color=colors[i],
+            linewidth=1.8,
+            markersize=5.4,
+            markeredgewidth=0.6,
+            markeredgecolor="white",
+        )
 
     # ===== 坐标轴 =====
     ax.set_xlabel("Number of Gaussians (init_n)", fontsize=12)
     ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=12)
 
-    ax.set_yscale("log")
-    ax.set_ylim([1e-1, 1e0])
+    x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
+    ax.set_xlim(all_x.min() - x_pad, all_x.max() + x_pad)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
 
-    # 保留所有 log 刻度线
-    ax.yaxis.set_major_locator(LogLocator(base=10.0))
-    ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2,3,4,5,6,7,8,9)))
+    if use_log_y:
+        ax.set_yscale("log")
+        ax.set_ylim(y_min / 1.22, y_max * 1.22)
+        ax.yaxis.set_major_locator(LogLocator(base=10.0))
+        ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2,3,4,5,6,7,8,9)))
 
-    # 只显示 10^0 和 10^-1，其他刻度值隐藏
-    def y_major_formatter(y, pos):
-        if abs(y - 1e0) < 1e-12:
-            return r"$10^{0}$"
-        elif abs(y - 1e-1) < 1e-12:
-            return r"$10^{-1}$"
-        return ""
+        def y_major_formatter(y, pos):
+            if y <= 0:
+                return ""
+            exp = np.log10(y)
+            if abs(exp - round(exp)) < 1e-10:
+                return rf"$10^{{{int(round(exp))}}}$"
+            return ""
 
-    ax.yaxis.set_major_formatter(FuncFormatter(y_major_formatter))
-    ax.yaxis.set_minor_formatter(NullFormatter())  # 次刻度不显示文字
+        ax.yaxis.set_major_formatter(FuncFormatter(y_major_formatter))
+        ax.yaxis.set_minor_formatter(NullFormatter())
+        ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
+        ax.grid(True, which="minor", axis="y", linestyle="--", alpha=0.22)
+    else:
+        y_pad = max(0.02, 0.08 * (y_max - y_min))
+        ax.set_ylim(max(0.0, y_min - y_pad), y_max + y_pad)
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
 
-    # grid: 主次刻度线都保留
-    ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
-    ax.grid(True, which="minor", axis="y", linestyle="--", alpha=0.25)
+    ax.tick_params(labelsize=10, direction="out", length=3.5, width=0.9)
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.9)
 
     # ===== 图例：拆成两个独立图例 =====
     color_handles = [
@@ -614,34 +642,37 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None):
     ]
 
     style_handles = [
-        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=1.5, label='w-J'),
-        mlines.Line2D([], [], color='black', linestyle='--', linewidth=1.5, label='w/o-J'),
+        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=1.8, label=style_names["1"]),
+        mlines.Line2D([], [], color='black', linestyle='--', linewidth=1.8, label=style_names["0"]),
     ]
 
-    # 左侧：颜色图例
+    # 保持原来的双图例布局：右上角是三个流场标签，偏左是模块开关标签。
     legend1 = ax.legend(
         handles=color_handles,
         loc="upper right",
         bbox_to_anchor=(1.0, 1.02),
+        ncol=1,
         frameon=True,
+        fontsize=9,
         borderpad=0.3,
         handletextpad=0.5,
-        labelspacing=0.4,
+        labelspacing=0.35,
     )
     ax.add_artist(legend1)
 
-    # 右侧：线型图例
     ax.legend(
         handles=style_handles,
         loc="upper right",
-        bbox_to_anchor=(0.6, 1.02),
+        bbox_to_anchor=(0.65, 1.02),
         frameon=True,
+        fontsize=9,
         borderpad=0.3,
+        handlelength=1.8,
         handletextpad=0.6,
-        labelspacing=0.4,
+        labelspacing=0.35,
     )
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     if save_path is not None:
         fig.savefig(save_path, dpi=300, bbox_inches="tight")

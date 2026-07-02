@@ -136,7 +136,7 @@ def plot_event_time2d(events, output_file=None, vmin=None, vmax=None):
     if vmax is None:
         vmax = np.max(t)
 
-    plt.figure(figsize=(6, 2))
+    plt.figure(figsize=(5, 3))
     plt.imshow(img, cmap='jet', vmin=vmin, vmax=vmax)
     plt.colorbar(label='Time (ms)')
     plt.axis('off')
