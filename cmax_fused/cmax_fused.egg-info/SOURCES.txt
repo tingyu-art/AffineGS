@@ -1,9 +1,0 @@
-setup.py
-cmax_fused/__init__.py
-cmax_fused/cmax_fused.py
-cmax_fused.egg-info/PKG-INFO
-cmax_fused.egg-info/SOURCES.txt
-cmax_fused.egg-info/dependency_links.txt
-cmax_fused.egg-info/top_level.txt
-cmax_fused/csrc/cmax_fused.cpp
-cmax_fused/csrc/cmax_fused_cuda.cu

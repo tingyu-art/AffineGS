@@ -6,7 +6,8 @@ import torch.nn.functional as F
 import torch
 from INR.frames import events_to_voxel_grid, events_to_est
 from INR.inr import MLP_Conv, train_func
-from gaussian_flow import GaussianFlowConfig, run_gaussian_flow
+from gaussian_flow.config import GaussianFlowConfig
+from gaussian_flow.training import run_gaussian_flow
 
 # ====================== PyTorch ============================
 device = "cuda" if torch.cuda.is_available() else "cpu"

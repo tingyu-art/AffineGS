@@ -6,5 +6,10 @@ cmax_fused/build/
 cmax_fused/cmax_fused.egg-info
 gaussian_render_ext/aaaaa/
 gaussian_render_ext/build/
-
-
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+build/
+*.egg-info/
+*.so

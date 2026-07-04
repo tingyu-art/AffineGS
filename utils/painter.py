@@ -551,6 +551,11 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
 
     flow_keys  = ["flow0", "flow1", "flow2"]
     style_names = {"1": "w-J", "0": "w/o-J"}
+    tick_size = 10
+    legend_size = 10
+    label_size = 12
+    line_width = 1.5
+    marker_size = 6
 
     series = []
     all_x = []
@@ -589,15 +594,13 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
             linestyle=linestyle,
             marker=markers[i],
             color=colors[i],
-            linewidth=1.8,
-            markersize=5.4,
-            markeredgewidth=0.6,
-            markeredgecolor="white",
+            linewidth=line_width,
+            markersize=marker_size,
         )
 
     # ===== 坐标轴 =====
-    ax.set_xlabel("Number of Gaussians (init_n)", fontsize=12)
-    ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=12)
+    ax.set_xlabel("Number of Gaussians (init_n)", fontsize=label_size)
+    ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=label_size)
 
     x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
     ax.set_xlim(all_x.min() - x_pad, all_x.max() + x_pad)
@@ -619,31 +622,34 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
 
         ax.yaxis.set_major_formatter(FuncFormatter(y_major_formatter))
         ax.yaxis.set_minor_formatter(NullFormatter())
-        ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
-        ax.grid(True, which="minor", axis="y", linestyle="--", alpha=0.22)
+        ax.grid(True, which="major", axis="both", linestyle="-", linewidth=1)
+        ax.grid(True, which="minor", axis="y", linestyle="-", linewidth=0.5, alpha=0.35)
     else:
         y_pad = max(0.02, 0.08 * (y_max - y_min))
         ax.set_ylim(max(0.0, y_min - y_pad), y_max + y_pad)
         ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
-        ax.grid(True, which="major", axis="both", linestyle="--", alpha=0.45)
+        ax.grid(True, which="major", axis="both", linestyle="-", linewidth=1)
 
-    ax.tick_params(labelsize=10, direction="out", length=3.5, width=0.9)
+    ax.tick_params(axis="both", which="major", labelsize=tick_size,
+                   direction="out", length=6, width=1)
+    ax.tick_params(axis="both", which="minor", labelsize=tick_size,
+                   direction="out", length=3, width=1)
     for spine in ax.spines.values():
-        spine.set_linewidth(0.9)
+        spine.set_linewidth(1)
 
     # ===== 图例：拆成两个独立图例 =====
     color_handles = [
         mlines.Line2D([], [], color=colors[0], marker=markers[0], linestyle='None',
-                      markersize=6, label=flow_names[0]),
+                      markersize=marker_size, label=flow_names[0]),
         mlines.Line2D([], [], color=colors[1], marker=markers[1], linestyle='None',
-                      markersize=6, label=flow_names[1]),
+                      markersize=marker_size, label=flow_names[1]),
         mlines.Line2D([], [], color=colors[2], marker=markers[2], linestyle='None',
-                      markersize=6, label=flow_names[2]),
+                      markersize=marker_size, label=flow_names[2]),
     ]
 
     style_handles = [
-        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=1.8, label=style_names["1"]),
-        mlines.Line2D([], [], color='black', linestyle='--', linewidth=1.8, label=style_names["0"]),
+        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=line_width, label=style_names["1"]),
+        mlines.Line2D([], [], color='black', linestyle='--', linewidth=line_width, label=style_names["0"]),
     ]
 
     # 保持原来的双图例布局：右上角是三个流场标签，偏左是模块开关标签。
@@ -653,7 +659,8 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
         bbox_to_anchor=(1.0, 1.02),
         ncol=1,
         frameon=True,
-        fontsize=9,
+        fontsize=legend_size,
+        framealpha=0.6,
         borderpad=0.3,
         handletextpad=0.5,
         labelspacing=0.35,
@@ -663,9 +670,10 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
     ax.legend(
         handles=style_handles,
         loc="upper right",
-        bbox_to_anchor=(0.65, 1.02),
+        bbox_to_anchor=(0.6, 1.02),
         frameon=True,
-        fontsize=9,
+        fontsize=legend_size,
+        framealpha=0.6,
         borderpad=0.3,
         handlelength=1.8,
         handletextpad=0.6,

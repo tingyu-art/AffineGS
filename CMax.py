@@ -1,11 +1,13 @@
 try:
-    from cmax_fused import fused_warp_iwe_cuda
+    from accelerators.cmax_fused import fused_warp_iwe_cuda
     _HAS_FUSED_WARP_IWE = True
-    print("CUDA acceleration: OK")
-except Exception:
+    _FUSED_WARP_IWE_IMPORT_ERROR = None
+    print("CMax fused extension: OK")
+except Exception as exc:
     fused_warp_iwe_cuda = None
     _HAS_FUSED_WARP_IWE = False
-    print("CUDA acceleration: NO")
+    _FUSED_WARP_IWE_IMPORT_ERROR = repr(exc)
+    print(f"CMax fused extension: NO ({_FUSED_WARP_IWE_IMPORT_ERROR})")
 
 import os
 import torch
