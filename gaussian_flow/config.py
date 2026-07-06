@@ -63,7 +63,6 @@ class GaussianFlowConfig:
     # ── 损失权重 ─────────────────────────────────────────────────────────────
     w_div: float = 10             # 散度正则化权重
     div_last: int = 500
-    w_smooth: float = 0.0
 
     # ── log_scale clamp 范围 ─────────────────────────────────────────────────
     log_scale_min: float = np.log(0.5)
@@ -71,16 +70,18 @@ class GaussianFlowConfig:
     # ── 密度控制参数 ─────────────────────────────────────────────────────────
     max_clone: int = 50
     max_split: int = 50
-    prune_opacity_thresh: float = 0.05
+    prune_opacity_thresh: float = 0.1
     max_anisotropy: float = 3.0
     residual_block_size: int = 8
     residual_min_events_per_block: int = 0
     clone_residual_quantile: float = 0.3
     clone_coverage_quantile: float = 0.3
+    clone_opacity_decay: float = 0.5
     split_residual_quantile: float = 0.5
     split_curvature_quantile: float = 0.5
     split_scale_quantile: float = 0.7
     split_scale_shrink: float = 0.7071   # 1 / sqrt(2)
+    split_opacity_decay: float = 0.5
     split_offset_factor: float = 0.5
     split_support_samples: int = 5
     split_support_extent: float = 1.5

@@ -11,7 +11,7 @@ from utils.flow_classifier import is_turbulence
 from .config import GaussianFlowConfig, GaussianFlowResult
 from .density_control import adaptive_density_control, create_optimizer, decide_phase
 from .model import GaussianVelocityField_Tiled
-from .utils import build_event_density_map, flow_regularizer
+from .utils import build_event_density_map, divergence_regularizer
 
 
 def _plot_training_history(history, phase):
@@ -21,16 +21,14 @@ def _plot_training_history(history, phase):
                     'Phase 2\n(split+prune)', 'Phase 3\n(prune only)']
     boundaries   = [0] + phase + [len(history['total'])]
 
-    fig, axes = plt.subplots(4, 1, figsize=(6, 5), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(6, 4), sharex=True)
     fig.suptitle('Training History', fontsize=14, fontweight='bold')
 
     panels = [
         ('total',       axes[0], 'Total Loss',    '#e74c3c'),
         ('data',        axes[0], 'Data Loss',      '#3498db'),
         ('div',         axes[1], 'Div Loss (×10)', '#9b59b6'),
-        ('smooth',      axes[1], 'Smooth Loss',    '#1abc9c'),
-        ('J_grad_norm', axes[2], 'J Grad Norm',    '#e67e22'),
-        ('N',           axes[3], '# Gaussians',    '#2c3e50'),
+        ('N',           axes[2], '# Gaussians',    '#2c3e50'),
     ]
 
     for ax in axes:
@@ -47,10 +45,9 @@ def _plot_training_history(history, phase):
         ax.plot(steps, vals, label=label, color=color, linewidth=1.2, alpha=0.9)
 
     axes[0].set_ylabel('Loss');       axes[0].legend(loc='upper right', fontsize=8)
-    axes[1].set_ylabel('Reg Loss');   axes[1].set_yscale('log'); axes[1].legend(loc='upper right', fontsize=8)
-    axes[2].set_ylabel('Grad Norm');  axes[2].legend(loc='upper right', fontsize=8)
-    axes[3].set_ylabel('N');          axes[3].legend(loc='upper right', fontsize=8)
-    axes[3].set_xlabel('Iteration')
+    axes[1].set_ylabel('Div Loss');   axes[1].set_yscale('log'); axes[1].legend(loc='upper right', fontsize=8)
+    axes[2].set_ylabel('N');          axes[2].legend(loc='upper right', fontsize=8)
+    axes[2].set_xlabel('Iteration')
 
     # draw first so y-axis limits are finalised before placing text labels
     plt.tight_layout()
@@ -139,7 +136,7 @@ def train_gaussian_flow(
         高斯参数定义在 [0, cfg.H) × [0, cfg.W) 坐标空间中。
     history : dict
         训练过程各项损失及统计量
-        键：'total', 'data', 'div', 'smooth', 'J_grad_norm', 'N'
+        键：'total', 'data', 'div', 'N'
 
     Notes
     -----
@@ -209,14 +206,13 @@ def train_gaussian_flow(
         else:
             weight_div = 0
             
-        smooth_loss, div_loss = flow_regularizer(pred_flow)
-        total_loss             = loss_data + weight_div * div_loss + cfg.w_smooth * smooth_loss
+        div_loss = divergence_regularizer(pred_flow)
+        total_loss = (
+            loss_data
+            + weight_div * div_loss
+        )
 
         total_loss.backward()
-
-        j_grad_norm = 0.0
-        if model.J_params is not None and model.J_params.grad is not None:
-            j_grad_norm = model.J_params.grad.norm().item()
 
         optimizer.step()
         scheduler.step()
@@ -227,8 +223,6 @@ def train_gaussian_flow(
         history['total'].append(total_loss.item())
         history['data'].append(loss_data.item())
         history['div'].append(div_loss.item())
-        history['smooth'].append(smooth_loss.item())
-        history['J_grad_norm'].append(j_grad_norm)
         history['N'].append(model.num_gaussians)
 
         rebuild_interval_now = get_rebuild_interval(i)
@@ -262,6 +256,8 @@ def train_gaussian_flow(
                     split_support_samples    = cfg.split_support_samples,
                     split_support_extent     = cfg.split_support_extent,
                     split_fallback_topk      = cfg.split_fallback_topk,
+                    clone_opacity_decay      = cfg.clone_opacity_decay,
+                    split_opacity_decay      = cfg.split_opacity_decay,
                     verbose                  = cfg.verbose,
                 )
                 if has_changed:
@@ -271,8 +267,6 @@ def train_gaussian_flow(
             print(f"Iter {i:04d} | total={total_loss.item():.6f} | "
                   f"data={loss_data.item():.6f} | "
                   f"div={div_loss.item():.6f} | "
-                  f"smooth={smooth_loss.item():.6f} | "
-                  f"J_grad={j_grad_norm:.5f} | "
                   f"N={model.num_gaussians}")
 
     if cfg.verbose:

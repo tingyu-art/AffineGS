@@ -5,10 +5,11 @@
 
 namespace {
 
-constexpr float kGateCenter = 14.0f;
+// Mahalanobis-distance soft support: term = r^2, so term=16 is 4 sigma.
+constexpr float kGateCenter = 16.0f;
 constexpr float kGateSlope  = -2.0f;
 
-// Keep the math unchanged; only tune launch/layout.
+// Keep launch/layout tuned independently from the support gate.
 constexpr int kThreadsFwd   = 512;   // 32x32 tile -> 1024 pixels -> 2 slices per tile
 constexpr int kThreadsBwd   = 256;   // good balance for warp-reduce backward
 constexpr int kChunkFwd     = 64;    // fewer chunk iterations / syncs

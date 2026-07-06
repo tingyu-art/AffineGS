@@ -79,65 +79,92 @@ def inr_est(evts, H=256, W=256):
     return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
 
 
+CLASSICAL_NUM_BINS = 21
+CLASSICAL_PAIR_OFFSET = 5
+FARNEBACK_CLAHE = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+
+
+def _normalize_voxel_grid(vg):
+    return (vg * 255.0 / (torch.max(vg) + 1e-8)).detach().cpu().numpy().clip(0, 255).astype(np.uint8)
+
+
+def _enhance_farneback_frame(frame):
+    frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    frame = FARNEBACK_CLAHE.apply(frame)
+    return cv2.GaussianBlur(frame, (5, 5), 1.5)
+
+
+def _resize_flow_frames(vg, resize_factor):
+    resize_factor = float(resize_factor)
+    if resize_factor <= 1.0:
+        return vg, 1.0
+    new_w = max(2, int(round(vg.shape[2] / resize_factor)))
+    new_h = max(2, int(round(vg.shape[1] / resize_factor)))
+    return np.stack([cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA) for frame in vg]), resize_factor
+
+
+def _restore_flow_resolution(flow, H, W, resize_factor):
+    if resize_factor <= 1.0:
+        return flow
+    flow = cv2.resize(flow, (W, H), interpolation=cv2.INTER_LINEAR)
+    return flow * resize_factor
+
+
 def of_vg(evts, H=256, W=256):
-    vg, dts = events_to_voxel_grid(evts, 21, H=H, W=W)
-    dt = (dts/20).item()
-    vg = (vg*255/(torch.max(vg)+1e-8)).detach().cpu().numpy().clip(0, 255).astype(np.uint8) # size B*W*H
+    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
     
     flows = []
-    for t in range(vg.shape[0] - 5):
-        img1 = cv2.blur(vg[t], (3,3))
-        img2 = cv2.blur(vg[t+5],(3,3))
+    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
+        img1 = _enhance_farneback_frame(vg[t])
+        img2 = _enhance_farneback_frame(vg[t + CLASSICAL_PAIR_OFFSET])
         f = cv2.calcOpticalFlowFarneback(img1, img2, None,
-            0.5, 3, 15, 15, 7, 1.3, 0)
+            0.5, 4, 25, 5, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
         flows.append(f)
     
     flow_mean = np.mean(flows, axis=0)
-    u = flow_mean[..., 1]/(5*dt)
-    v = flow_mean[..., 0]/(5*dt)
+    u = flow_mean[..., 1]/(CLASSICAL_PAIR_OFFSET*dt)
+    v = flow_mean[..., 0]/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u, v)
     return u, v, div, vor
 
 def of_est(evts, H=256, W=256):
-    vg, dts = events_to_est(evts, 21, H=H, W=W)
-    dt = (dts/20).item()
-    vg = (vg*255/(torch.max(vg)+1e-8)).detach().cpu().numpy().clip(0, 255).astype(np.uint8) # size B*W*H
+    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
     
     flows = []
-    for t in range(vg.shape[0] - 5):
-        img1 = cv2.blur(vg[t], (3,3))
-        img2 = cv2.blur(vg[t+5],(3,3))
+    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
+        img1 = _enhance_farneback_frame(vg[t])
+        img2 = _enhance_farneback_frame(vg[t + CLASSICAL_PAIR_OFFSET])
         f = cv2.calcOpticalFlowFarneback(img1, img2, None,
-            0.5, 3, 15, 15, 7, 1.3, 0)
+            0.5, 4, 25, 5, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
         flows.append(f)
     
     flow_mean = np.mean(flows, axis=0)
-    u = flow_mean[..., 1]/(5*dt)
-    v = flow_mean[..., 0]/(5*dt)
+    u = flow_mean[..., 1]/(CLASSICAL_PAIR_OFFSET*dt)
+    v = flow_mean[..., 0]/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u, v)
     return u, v, div, vor
 
 
-def ilk_vg(evts, radius=7, num_warp=5, H=256, W=256):
-    vg, dts = events_to_voxel_grid(evts, 21, H=H, W=W)
-    dt = (dts/20).item()
-
-    # normalize to uint8 (ILK usually expects float, but uint8 -> float OK)
-    vg = (vg * 255.0 / (torch.max(vg) + 1e-8)) \
-            .detach().cpu().numpy() \
-            .clip(0, 255).astype(np.uint8)   # [T, H, W]
+def ilk_vg(evts, H=256, W=256):
+    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
+    vg, resize_factor = _resize_flow_frames(vg, resize_factor=2)
 
     flows_u, flows_v = [], []
 
-    for t in range(vg.shape[0] - 5):
-        # ILK prefers float images
-        img1 = vg[t].astype(np.float32)
-        img2 = vg[t + 5].astype(np.float32)
+    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
+        img1 = cv2.GaussianBlur(vg[t], (7, 7), 0).astype(np.float32)
+        img2 = cv2.GaussianBlur(vg[t + CLASSICAL_PAIR_OFFSET], (7, 7), 0).astype(np.float32)
 
         u, v = optical_flow_ilk(
             img1, img2,
-            radius=radius,
-            num_warp=num_warp,
+            radius=16,
+            num_warp=1,
             gaussian=False,
             prefilter=True
         )
@@ -146,32 +173,28 @@ def ilk_vg(evts, radius=7, num_warp=5, H=256, W=256):
         flows_v.append(v)
 
     # temporal averaging
-    u_mean = np.mean(flows_u, axis=0)/(5*dt)
-    v_mean = np.mean(flows_v, axis=0)/(5*dt)
+    u_mean = _restore_flow_resolution(np.mean(flows_u, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
+    v_mean = _restore_flow_resolution(np.mean(flows_v, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u_mean, v_mean)
     
     return u_mean, v_mean, div, vor
 
-def ilk_est(evts, radius=7, num_warp=5, H=256, W=256):
-    vg, dts = events_to_est(evts, 21, H=H, W=W)
-    dt = (dts/20).item()
-
-    # normalize to uint8 (ILK usually expects float, but uint8 -> float OK)
-    vg = (vg * 255.0 / (torch.max(vg) + 1e-8)) \
-            .detach().cpu().numpy() \
-            .clip(0, 255).astype(np.uint8)   # [T, H, W]
+def ilk_est(evts, H=256, W=256):
+    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
+    vg, resize_factor = _resize_flow_frames(vg, resize_factor=2)
 
     flows_u, flows_v = [], []
 
-    for t in range(vg.shape[0] - 5):
-        # ILK prefers float images
-        img1 = vg[t].astype(np.float32)
-        img2 = vg[t + 5].astype(np.float32)
+    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
+        img1 = cv2.GaussianBlur(vg[t], (7, 7), 0).astype(np.float32)
+        img2 = cv2.GaussianBlur(vg[t + CLASSICAL_PAIR_OFFSET], (7, 7), 0).astype(np.float32)
 
         u, v = optical_flow_ilk(
             img1, img2,
-            radius=radius,
-            num_warp=num_warp,
+            radius=16,
+            num_warp=1,
             gaussian=False,
             prefilter=True
         )
@@ -180,8 +203,8 @@ def ilk_est(evts, radius=7, num_warp=5, H=256, W=256):
         flows_v.append(v)
 
     # temporal averaging
-    u_mean = np.mean(flows_u, axis=0)/(5*dt)
-    v_mean = np.mean(flows_v, axis=0)/(5*dt)
+    u_mean = _restore_flow_resolution(np.mean(flows_u, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
+    v_mean = _restore_flow_resolution(np.mean(flows_v, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u_mean, v_mean)
     
     return u_mean, v_mean, div, vor

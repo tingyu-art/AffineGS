@@ -20,7 +20,7 @@ from .indexing import GaussianSpatialIndexer
 from .model import GaussianVelocityField_Tiled
 from .renderer import HAS_CUDA_RENDERER, render_gaussians_cuda
 from .training import get_rebuild_interval, render_gaussian_flow, run_gaussian_flow, train_gaussian_flow
-from .utils import build_event_density_map, flow_regularizer
+from .utils import build_event_density_map, divergence_regularizer
 
 __all__ = [
     "GaussianFlowConfig",
@@ -37,7 +37,7 @@ __all__ = [
     "compute_flow_curvature",
     "create_optimizer",
     "decide_phase",
-    "flow_regularizer",
+    "divergence_regularizer",
     "get_rebuild_interval",
     "precompute_clone_candidates",
     "prune_gaussians",

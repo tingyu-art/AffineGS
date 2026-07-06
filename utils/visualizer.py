@@ -244,7 +244,7 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
         u = u.detach().cpu().numpy()
     if isinstance(v, torch.Tensor):
         v = v.detach().cpu().numpy()
-    
+
     H, W = u.shape
     x = np.arange(0, H)
     y = np.arange(0, W)
@@ -275,7 +275,7 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
             v_min = np.nanmin(display_data)
         if v_max is None:
             v_max = np.nanmax(display_data)
-        
+
         im = plt.imshow(display_data[::step, ::step], vmin=v_min, vmax=v_max,
                         cmap='viridis', origin='lower')
 

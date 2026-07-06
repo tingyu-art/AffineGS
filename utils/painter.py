@@ -195,7 +195,13 @@ def _infer_dataset_name(file_path):
         /xxx/JHTDB.json   -> JHTDB
         /xxx/dns_flow.json -> dns_flow
     """
-    return os.path.splitext(os.path.basename(file_path))[0]
+    name = os.path.splitext(os.path.basename(file_path))[0]
+    name = name.split("(")[0]
+    display_name_map = {
+        "JHTDB_isotropic": "JHTDB-isotropic",
+        "DNS_turbulence": "DNS-turbulence",
+    }
+    return display_name_map.get(name, name)
 
 
 def plot_boxplot(
@@ -546,11 +552,26 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter, MaxNLocator
 
-def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto"):
+def plot_module_validity(
+    data,
+    flow_names,
+    metric="rmse",
+    save_path=None,
+    y_scale="auto",
+    x_label="Number of Gaussians (init_n)",
+    style_names=None,
+    style_keys=("1", "0"),
+    style_linestyles=None,
+    style_legend_anchor=(0.6, 1.02),
+):
     assert metric in ["rmse", "aee"], "metric 必须是 rmse 或 aee"
 
     flow_keys  = ["flow0", "flow1", "flow2"]
-    style_names = {"1": "w-J", "0": "w/o-J"}
+    if style_names is None:
+        style_names = {"1": "w-J", "0": "w/o-J"}
+    if style_linestyles is None:
+        style_linestyles = {"1": "-", "0": "--"}
+
     tick_size = 10
     legend_size = 10
     label_size = 12
@@ -563,7 +584,7 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
     for i, flow_key in enumerate(flow_keys):
         assert flow_key in data, f"{flow_key} 不存在"
         flow_data = data[flow_key]
-        for jac_key in ["1", "0"]:
+        for jac_key in style_keys:
             assert jac_key in flow_data, f"{flow_key} 缺少 jacobian={jac_key}"
             sub_data = flow_data[jac_key]
             xs = np.array(sorted([int(k) for k in sub_data.keys()]), dtype=float)
@@ -587,11 +608,10 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
 
     # ===== 主曲线 =====
     for i, jac_key, xs, ys in series:
-        linestyle = "-" if jac_key == "1" else "--"
         ax.plot(
             xs,
             ys,
-            linestyle=linestyle,
+            linestyle=style_linestyles[jac_key],
             marker=markers[i],
             color=colors[i],
             linewidth=line_width,
@@ -599,7 +619,7 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
         )
 
     # ===== 坐标轴 =====
-    ax.set_xlabel("Number of Gaussians (init_n)", fontsize=label_size)
+    ax.set_xlabel(x_label, fontsize=label_size)
     ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=label_size)
 
     x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
@@ -648,8 +668,13 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
     ]
 
     style_handles = [
-        mlines.Line2D([], [], color='black', linestyle='-',  linewidth=line_width, label=style_names["1"]),
-        mlines.Line2D([], [], color='black', linestyle='--', linewidth=line_width, label=style_names["0"]),
+        mlines.Line2D(
+            [], [], color='black',
+            linestyle=style_linestyles[key],
+            linewidth=line_width,
+            label=style_names[key],
+        )
+        for key in style_keys
     ]
 
     # 保持原来的双图例布局：右上角是三个流场标签，偏左是模块开关标签。
@@ -670,7 +695,7 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
     ax.legend(
         handles=style_handles,
         loc="upper right",
-        bbox_to_anchor=(0.6, 1.02),
+        bbox_to_anchor=style_legend_anchor,
         frameon=True,
         fontsize=legend_size,
         framealpha=0.6,
@@ -686,6 +711,9 @@ def plot_exp111(data, flow_names, metric="rmse", save_path=None, y_scale="auto")
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
 
     plt.show()
+
+
+plot_exp111 = plot_module_validity
 
 def analyze_error(pred_flow, gt_flow, flow_names, n_bins=5):
     """

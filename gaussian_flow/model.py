@@ -35,8 +35,8 @@ class GaussianVelocityField_Tiled(nn.Module):
 
         self.log_scale = nn.Parameter(
             torch.stack([
-                torch.rand(num_gaussians, device=device) * np.log(10.0),
-                torch.rand(num_gaussians, device=device) * np.log(7.0)
+                torch.rand(num_gaussians, device=device) * np.log(50.0),
+                torch.rand(num_gaussians, device=device) * np.log(35.0)
             ], dim=1))
         self.opacity_logit  = nn.Parameter(torch.zeros(num_gaussians, 1, device=device))
         self.rotation       = nn.Parameter(torch.rand(num_gaussians, 1, device=device) * torch.pi)
@@ -168,6 +168,28 @@ class GaussianVelocityField_Tiled(nn.Module):
             zeros_hw = torch.zeros(self.H, self.W, device=device)
             return (_zf, _zw, zeros_hw, zeros_hw) if compute_derivatives else (_zf, _zw, None, None)
 
+        if not compute_derivatives and device.type == 'cuda' and HAS_CUDA_RENDERER:
+            J_render = J if J is not None else torch.zeros(
+                self.num_gaussians, 2, 2, device=device, dtype=self.mu.dtype
+            )
+            num_h_map, num_w_map, den_map = render_gaussians_cuda(
+                self.mu,
+                Sigma_inv,
+                opacity,
+                vel_global,
+                J_render,
+                indexer.cell_ptr,
+                indexer.cell_indices,
+                self.H,
+                self.W,
+                self.tile_size,
+                indexer.grid_w,
+            )
+            weight_map = den_map.unsqueeze(0)
+            W_safe = weight_map + 1e-8
+            flow = torch.stack([num_h_map, num_w_map], dim=0) / W_safe
+            return flow, weight_map, None, None
+
         K_max = int(tile_counts[active_tile_ids].max().item())
 
         starts = indexer.cell_ptr[active_tile_ids]
@@ -226,21 +248,11 @@ class GaussianVelocityField_Tiled(nn.Module):
               + 2 * dh * dw * Si_hw.unsqueeze(1)
               + dw * dw * Si_ww.unsqueeze(1))   # [T, P, K]
 
-        support_mask = (
-            (term <= 16.0)
-            & valid_gmask.unsqueeze(1)
-            & pixel_valid.unsqueeze(2)
-        )
-        
-        gauss_w = torch.zeros_like(term)
-        gauss_w[support_mask] = torch.exp(-0.5 * term[support_mask])
-        
+        valid_weight_mask = valid_gmask.unsqueeze(1) & pixel_valid.unsqueeze(2)
+        gate = torch.sigmoid(2.0 * (16.0 - term))
+        gauss_w = torch.exp(-0.5 * term) * gate
+        gauss_w = gauss_w * valid_weight_mask.to(gauss_w.dtype)
         weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)
-        
-        # gauss_w = (torch.exp(-0.5 * term)
-        #            * torch.sigmoid(-2.0 * (term - 14.0)))
-        # gauss_w = gauss_w * valid_gmask.unsqueeze(1) * pixel_valid.unsqueeze(2)
-        # weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)   # [T, P, K]
 
         if cur_J is not None:
             vel_h_aff = cur_J[..., 0, 0].unsqueeze(1) * dh + cur_J[..., 0, 1].unsqueeze(1) * dw
@@ -266,13 +278,15 @@ class GaussianVelocityField_Tiled(nn.Module):
             neg_Si_dh = -(Si_hh.unsqueeze(1) * dh + Si_hw.unsqueeze(1) * dw)
             neg_Si_dw = -(Si_hw.unsqueeze(1) * dh + Si_ww.unsqueeze(1) * dw)
             neg_Si_d  = torch.stack([neg_Si_dh, neg_Si_dw], dim=-1)   # [T, P, K, 2]
+            gate_grad_factor = (5.0 - 4.0 * gate).unsqueeze(-1)
+            dlogw_d = gate_grad_factor * neg_Si_d
 
             J_contrib = cur_J if cur_J is not None else \
                         torch.zeros(T, K_max, 2, 2, device=device)
 
-            outer  = vel_all.unsqueeze(-1) * neg_Si_d.unsqueeze(-2)
+            outer  = vel_all.unsqueeze(-1) * dlogw_d.unsqueeze(-2)
             dN_d   = w3.unsqueeze(-1) * (J_contrib.unsqueeze(1) + outer)   # [T, P, K, 2, 2]
-            dW_d   = w3.squeeze(-1).unsqueeze(-1) * neg_Si_d
+            dW_d   = w3.squeeze(-1).unsqueeze(-1) * dlogw_d
 
             dN_sum = dN_d.sum(dim=2)   # [T, P, 2, 2]
             dW_sum = dW_d.sum(dim=2)   # [T, P, 2]
@@ -318,33 +332,6 @@ class GaussianVelocityField_Tiled(nn.Module):
             vorticity = dU_w_dh - dU_h_dw
 
             return flow, weight_map, div, vorticity
-
-        # ── 普通路径 ───────────────────────────────────────────────────────
-        if device.type == 'cuda' and HAS_CUDA_RENDERER:
-            J_render = J if J is not None else torch.zeros(
-                self.num_gaussians, 2, 2, device=device, dtype=self.mu.dtype
-            )
-            num_h_map, num_w_map, den_map = render_gaussians_cuda(
-                self.mu,
-                Sigma_inv,
-                opacity,
-                vel_global,
-                J_render,
-                indexer.cell_ptr,
-                indexer.cell_indices,
-                self.H,
-                self.W,
-                self.tile_size,
-                indexer.grid_w,
-            )
-            weight_map = den_map.unsqueeze(0)
-            W_safe = weight_map + 1e-8
-            flow = torch.stack([num_h_map, num_w_map], dim=0) / W_safe
-
-            # if not hasattr(self, "_printed_cuda_render"):
-            #     print("[CUDA render] using custom gaussian_render_cuda")
-            #     self._printed_cuda_render = True
-            return flow, weight_map, None, None
 
         out3 = torch.zeros(3, self.H * self.W, device=device)
         src3 = torch.cat([
@@ -477,15 +464,10 @@ class GaussianVelocityField_Tiled(nn.Module):
         term    = (dh * dh * Si_hh.unsqueeze(1)
                  + 2 * dh * dw * Si_hw.unsqueeze(1)
                  + dw * dw * Si_ww.unsqueeze(1))
-        support_mask = (
-            (term <= 16.0)
-            & valid_gmask.unsqueeze(1)
-            & pixel_valid.unsqueeze(2)
-        )
-        
-        gauss_w = torch.zeros_like(term)
-        gauss_w[support_mask] = torch.exp(-0.5 * term[support_mask])
-        
+        valid_weight_mask = valid_gmask.unsqueeze(1) & pixel_valid.unsqueeze(2)
+        gate = torch.sigmoid(2.0 * (16.0 - term))
+        gauss_w = torch.exp(-0.5 * term) * gate
+        gauss_w = gauss_w * valid_weight_mask.to(gauss_w.dtype)
         weights = gauss_w * cur_opacity.squeeze(-1).unsqueeze(1)
 
         if cur_J is not None:
@@ -514,12 +496,14 @@ class GaussianVelocityField_Tiled(nn.Module):
             neg_Si_dh = -(Si_hh.unsqueeze(1) * dh + Si_hw.unsqueeze(1) * dw)
             neg_Si_dw = -(Si_hw.unsqueeze(1) * dh + Si_ww.unsqueeze(1) * dw)
             neg_Si_d  = torch.stack([neg_Si_dh, neg_Si_dw], dim=-1)
+            gate_grad_factor = (5.0 - 4.0 * gate).unsqueeze(-1)
+            dlogw_d = gate_grad_factor * neg_Si_d
 
             J_contrib = cur_J if cur_J is not None else \
                         torch.zeros(T, K_max, 2, 2, device=device)
-            outer  = vel_all.unsqueeze(-1) * neg_Si_d.unsqueeze(-2)
+            outer  = vel_all.unsqueeze(-1) * dlogw_d.unsqueeze(-2)
             dN_d   = w3.unsqueeze(-1) * (J_contrib.unsqueeze(1) + outer)
-            dW_d   = w3.squeeze(-1).unsqueeze(-1) * neg_Si_d
+            dW_d   = w3.squeeze(-1).unsqueeze(-1) * dlogw_d
 
             dN_sum = dN_d.sum(dim=2)
             dW_sum = dW_d.sum(dim=2)

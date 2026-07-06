@@ -178,6 +178,17 @@ def robust_normalize(x, valid_mask=None, q_low=0.05, q_high=0.95, eps=1e-8):
     return ((x - lo) / (hi - lo + eps)).clamp(0.0, 1.0)
 
 
+def decay_opacity_logit(opacity_logit, decay, eps=1e-6):
+    decay = float(decay)
+    if decay >= 1.0:
+        return opacity_logit.clone()
+    if decay <= 0.0:
+        return torch.full_like(opacity_logit, float(np.log(eps / (1.0 - eps))))
+    opacity = torch.sigmoid(opacity_logit) * decay
+    opacity = opacity.clamp(eps, 1.0 - eps)
+    return torch.logit(opacity)
+
+
 def sample_block_map_at_gaussians(block_map, mu, block_size, H, W):
     Hb, Wb = block_map.shape
     bh = (mu[:, 0] / block_size).floor().long().clamp(0, Hb - 1)
@@ -269,6 +280,8 @@ def adaptive_density_control(
     split_support_samples,
     split_support_extent,
     split_fallback_topk,
+    clone_opacity_decay,
+    split_opacity_decay,
     verbose=True,
 ):
     device = model.mu.device
@@ -386,7 +399,10 @@ def adaptive_density_control(
                     parent_sel = nearest_parent[in_range]
                     clone_log_scale[in_range] = model.log_scale.data[parent_sel].clone()
                     clone_rotation[in_range] = model.rotation.data[parent_sel].clone()
-                    clone_opacity[in_range] = model.opacity_logit.data[parent_sel].clone()
+                    clone_opacity[in_range] = decay_opacity_logit(
+                        model.opacity_logit.data[parent_sel],
+                        clone_opacity_decay,
+                    )
                     clone_velocity[in_range] = model.local_velocity.data[parent_sel].clone()
                     if use_J:
                         clone_jacobian[in_range] = model.J_params.data[parent_sel].clone()
@@ -504,13 +520,17 @@ def adaptive_density_control(
 
                 model.mu.data[split_indices] = parent_new_mu
                 model.log_scale.data[split_indices] = child_log_scale.clone()
-                model.opacity_logit.data[split_indices] = model.opacity_logit.data[split_indices]
+                split_opacity = decay_opacity_logit(
+                    model.opacity_logit.data[split_indices],
+                    split_opacity_decay,
+                )
+                model.opacity_logit.data[split_indices] = split_opacity
 
                 split_dict = {
                     'mu': child_mu,
                     'scale': child_log_scale.clone(),
                     'rotation': model.rotation.data[split_indices].clone(),
-                    'opacity': model.opacity_logit.data[split_indices].clone(),
+                    'opacity': split_opacity.clone(),
                     'velocity': model.local_velocity.data[split_indices].clone(),
                     'jacobian': model.J_params.data[split_indices].clone() if use_J else None,
                 }
