@@ -280,11 +280,11 @@ def adaptive_density_control(
     split_support_samples,
     split_support_extent,
     split_fallback_topk,
-    clone_opacity_decay,
-    split_opacity_decay,
     verbose=True,
 ):
     device = model.mu.device
+    clone_opacity_decay = 0.5
+    split_opacity_decay = 0.5
     H, W = model.H, model.W
     margin = model.tile_size // 2
     use_J = _has_jacobian(model)
@@ -412,8 +412,8 @@ def adaptive_density_control(
                 if random_mask.any():
                     n_rand = int(random_mask.sum().item())
                     clone_log_scale[random_mask] = torch.stack([
-                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(10.0),
-                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(7.0),
+                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(model.init_scale_h),
+                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(model.init_scale_w),
                     ], dim=1)
                     clone_rotation[random_mask] = torch.rand(
                         n_rand, 1, device=device, dtype=model.rotation.dtype

@@ -10,9 +10,9 @@ from .utils import _has_jacobian
 
 class GaussianVelocityField_Tiled(nn.Module):
 
-    def __init__(self, num_gaussians, H, W, tile_size, events_map,
-                 density_alpha, enable_jacobian=True, device='cuda',
-                 jacobian_mode='full'):
+    def __init__(self, num_gaussians, H, W, tile_size,
+                 enable_jacobian=True, device='cuda', jacobian_mode='full',
+                 init_scale_h=10.0, init_scale_w=7.0):
         super().__init__()
         self.num_gaussians   = num_gaussians
         self.H, self.W       = H, W
@@ -20,6 +20,8 @@ class GaussianVelocityField_Tiled(nn.Module):
         self.enable_jacobian = enable_jacobian
         self.device          = device
         self.jacobian_mode   = jacobian_mode
+        self.init_scale_h    = float(init_scale_h)
+        self.init_scale_w    = float(init_scale_w)
 
         if self.jacobian_mode not in ("full", "trace_free"):
             raise ValueError(
@@ -27,16 +29,15 @@ class GaussianVelocityField_Tiled(nn.Module):
                 "expected 'full' or 'trace_free'."
             )
 
-        if events_map is not None:
-            self.mu = nn.Parameter(
-                self.initialize_gaussian_positions(events_map, H, W, num_gaussians, density_alpha))
-        else:
-            self.mu = nn.Parameter(torch.rand(num_gaussians, 2, device=device) * (H + 32) - 16)
+        if self.init_scale_h <= 1.0 or self.init_scale_w <= 1.0:
+            raise ValueError("init_scale_h and init_scale_w must be > 1.0")
+
+        self.mu = nn.Parameter(torch.rand(num_gaussians, 2, device=device) * (H + 32) - 16)
 
         self.log_scale = nn.Parameter(
             torch.stack([
-                torch.rand(num_gaussians, device=device) * np.log(50.0),
-                torch.rand(num_gaussians, device=device) * np.log(35.0)
+                torch.rand(num_gaussians, device=device) * np.log(self.init_scale_h),
+                torch.rand(num_gaussians, device=device) * np.log(self.init_scale_w)
             ], dim=1))
         self.opacity_logit  = nn.Parameter(torch.zeros(num_gaussians, 1, device=device))
         self.rotation       = nn.Parameter(torch.rand(num_gaussians, 1, device=device) * torch.pi)
@@ -60,20 +61,6 @@ class GaussianVelocityField_Tiled(nn.Module):
             torch.stack([lh, lw], dim=-1).reshape(1, tile_size * tile_size, 2)
         )
         self._indexer_cache = None
-
-    # ------------------------------------------------------------------
-    def initialize_gaussian_positions(self, events_map, H, W, num_gaussians, alpha):
-        device = events_map.device
-        with torch.no_grad():
-            events_map      = torch.log1p(events_map)
-            events_map_norm = events_map / (events_map.sum() + 1e-8)
-            uniform         = torch.ones_like(events_map) / (H * W)
-            density         = alpha * events_map_norm + (1 - alpha) * uniform
-            flat            = density.reshape(-1)
-            sampled_idx     = torch.multinomial(flat, num_gaussians, replacement=True)
-            mu_h = (sampled_idx // W).float() + torch.randn(num_gaussians, device=device) * 0.5
-            mu_w = (sampled_idx  % W).float() + torch.randn(num_gaussians, device=device) * 0.5
-            return torch.stack([mu_h, mu_w], dim=1)   # [N, 2]，(h, w)
 
     # ------------------------------------------------------------------
     def rebuild_indexer(self):

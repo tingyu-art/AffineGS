@@ -159,11 +159,11 @@ def train_gaussian_flow(
         H               = cfg.H,
         W               = cfg.W,
         tile_size       = cfg.tile_size,
-        events_map      = events_map,
-        density_alpha   = cfg.density_alpha,
         enable_jacobian = cfg.enable_jacobian,
         device          = device,
         jacobian_mode   = cfg.jacobian_mode,
+        init_scale_h    = cfg.init_scale_h,
+        init_scale_w    = cfg.init_scale_w,
     ).to(device)
     model.rebuild_indexer()
 
@@ -256,8 +256,6 @@ def train_gaussian_flow(
                     split_support_samples    = cfg.split_support_samples,
                     split_support_extent     = cfg.split_support_extent,
                     split_fallback_topk      = cfg.split_fallback_topk,
-                    clone_opacity_decay      = cfg.clone_opacity_decay,
-                    split_opacity_decay      = cfg.split_opacity_decay,
                     verbose                  = cfg.verbose,
                 )
                 if has_changed:

@@ -46,7 +46,8 @@ class GaussianFlowConfig:
     # ── 模型初始化 ───────────────────────────────────────────────────────────
     init_n: int = 300               # 初始高斯数量
     tile_size: int = 32             # 分块大小
-    density_alpha: float = 0.0      # 事件密度引导权重（0=均匀，1=纯密度）
+    init_scale_h: float = 10.0      # log_scale[:,0] 初始化上界：rand * log(init_scale_h)
+    init_scale_w: float = 7.0       # log_scale[:,1] 初始化上界：rand * log(init_scale_w)
     enable_jacobian: bool = True    # 是否启用雅可比矩阵参数
     jacobian_mode: str = "full"     # full=[[a,b],[c,d]]；trace_free=[[a,b],[c,-a]]
 
@@ -76,12 +77,10 @@ class GaussianFlowConfig:
     residual_min_events_per_block: int = 0
     clone_residual_quantile: float = 0.3
     clone_coverage_quantile: float = 0.3
-    clone_opacity_decay: float = 0.5
     split_residual_quantile: float = 0.5
     split_curvature_quantile: float = 0.5
     split_scale_quantile: float = 0.7
     split_scale_shrink: float = 0.7071   # 1 / sqrt(2)
-    split_opacity_decay: float = 0.5
     split_offset_factor: float = 0.5
     split_support_samples: int = 5
     split_support_extent: float = 1.5
