@@ -149,22 +149,21 @@ def of_est(evts, H=256, W=256):
     return u, v, div, vor
 
 
-def ilk_vg(evts, H=256, W=256):
+def ilk_vg(evts, radius=7, num_warp=5, H=256, W=256):
     vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
-    vg, resize_factor = _resize_flow_frames(vg, resize_factor=2)
 
     flows_u, flows_v = [], []
 
     for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = cv2.GaussianBlur(vg[t], (7, 7), 0).astype(np.float32)
-        img2 = cv2.GaussianBlur(vg[t + CLASSICAL_PAIR_OFFSET], (7, 7), 0).astype(np.float32)
+        img1 = vg[t].astype(np.float32)
+        img2 = vg[t + CLASSICAL_PAIR_OFFSET].astype(np.float32)
 
         u, v = optical_flow_ilk(
             img1, img2,
-            radius=16,
-            num_warp=1,
+            radius=radius,
+            num_warp=num_warp,
             gaussian=False,
             prefilter=True
         )
@@ -173,28 +172,27 @@ def ilk_vg(evts, H=256, W=256):
         flows_v.append(v)
 
     # temporal averaging
-    u_mean = _restore_flow_resolution(np.mean(flows_u, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
-    v_mean = _restore_flow_resolution(np.mean(flows_v, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
+    u_mean = np.mean(flows_u, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
+    v_mean = np.mean(flows_v, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u_mean, v_mean)
     
     return u_mean, v_mean, div, vor
 
-def ilk_est(evts, H=256, W=256):
+def ilk_est(evts, radius=7, num_warp=5, H=256, W=256):
     vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
-    vg, resize_factor = _resize_flow_frames(vg, resize_factor=2)
 
     flows_u, flows_v = [], []
 
     for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = cv2.GaussianBlur(vg[t], (7, 7), 0).astype(np.float32)
-        img2 = cv2.GaussianBlur(vg[t + CLASSICAL_PAIR_OFFSET], (7, 7), 0).astype(np.float32)
+        img1 = vg[t].astype(np.float32)
+        img2 = vg[t + CLASSICAL_PAIR_OFFSET].astype(np.float32)
 
         u, v = optical_flow_ilk(
             img1, img2,
-            radius=16,
-            num_warp=1,
+            radius=radius,
+            num_warp=num_warp,
             gaussian=False,
             prefilter=True
         )
@@ -203,8 +201,8 @@ def ilk_est(evts, H=256, W=256):
         flows_v.append(v)
 
     # temporal averaging
-    u_mean = _restore_flow_resolution(np.mean(flows_u, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
-    v_mean = _restore_flow_resolution(np.mean(flows_v, axis=0), H, W, resize_factor)/(CLASSICAL_PAIR_OFFSET*dt)
+    u_mean = np.mean(flows_u, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
+    v_mean = np.mean(flows_v, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
     div, vor = compute_flow_quantities(u_mean, v_mean)
     
     return u_mean, v_mean, div, vor

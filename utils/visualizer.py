@@ -102,7 +102,20 @@ def plot_events_3d(events, output_file=None, startN=-10000, endN=-1):
     plt.show()
 
 
-def plot_event_time2d(events, output_file=None, vmin=None, vmax=None):
+def plot_event_time2d(
+    events,
+    output_file=None,
+    vmin=None,
+    vmax=None,
+    figsize=(5, 3),
+    cmap='jet',
+    cbar_label='Time (ms)',
+    cbar_ticks=None,
+    cbar_tick_size=12,
+    cbar_label_size=12,
+    image_rect=(0.02, 0.08, 0.84, 0.84),
+    cbar_rect=(0.89, 0.08, 0.025, 0.84),
+):
     """
         events: numpy.ndarray, 形状 (N,4)，列为 x, y, t, p
         vmin, vmax: 时间映射的颜色范围（可选）
@@ -136,13 +149,23 @@ def plot_event_time2d(events, output_file=None, vmin=None, vmax=None):
     if vmax is None:
         vmax = np.max(t)
 
-    plt.figure(figsize=(5, 3))
-    plt.imshow(img, cmap='jet', vmin=vmin, vmax=vmax)
-    plt.colorbar(label='Time (ms)')
-    plt.axis('off')
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_axes(image_rect)
+    cax = fig.add_axes(cbar_rect)
+
+    im = ax.imshow(img, cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto')
+    ax.axis('off')
+
+    cbar = fig.colorbar(im, cax=cax)
+    if cbar_ticks is not None:
+        cbar.set_ticks(cbar_ticks)
+    cbar.set_label(cbar_label, fontsize=cbar_label_size)
+    cbar.ax.tick_params(labelsize=cbar_tick_size, direction='out', length=4, width=1)
+    for spine in cbar.ax.spines.values():
+        spine.set_linewidth(1)
     
     if output_file is not None:
-        plt.savefig(output_file, bbox_inches='tight', pad_inches=0.1)
+        fig.savefig(output_file, dpi=300, bbox_inches='tight', pad_inches=0.05)
         print(f"Figure saved to {output_file}")
     # plt.title('2D Event Time Visualization')
     plt.show()

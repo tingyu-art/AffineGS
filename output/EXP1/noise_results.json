@@ -1,5 +1,5 @@
 {
- "JHTDB_isotropic": {
+ "JHTDB-isotropic": {
   "0.00": {
    "rmse": 0.1613,
    "aee": 0.1244
@@ -45,7 +45,7 @@
    "aee": 0.2228
   }
  },
- "DNS_turbulence": {
+ "DNS-turbulence": {
   "0.00": {
    "rmse": 0.1192,
    "aee": 0.0949

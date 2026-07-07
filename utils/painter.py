@@ -563,6 +563,16 @@ def plot_module_validity(
     style_keys=("1", "0"),
     style_linestyles=None,
     style_legend_anchor=(0.6, 1.02),
+    figsize=(5, 3),
+    xlim=None,
+    ylim=None,
+    x_major_ticks=None,
+    x_minor_ticks=None,
+    y_major_ticks=None,
+    y_minor_ticks=None,
+    ticks_size=10,
+    legend_size=10,
+    label_size=12,
 ):
     assert metric in ["rmse", "aee"], "metric 必须是 rmse 或 aee"
 
@@ -572,9 +582,6 @@ def plot_module_validity(
     if style_linestyles is None:
         style_linestyles = {"1": "-", "0": "--"}
 
-    tick_size = 10
-    legend_size = 10
-    label_size = 12
     line_width = 1.5
     marker_size = 6
 
@@ -604,7 +611,7 @@ def plot_module_validity(
     data_ratio = y_max / max(y_min, 1e-12)
     use_log_y = (y_scale == "log") or (y_scale == "auto" and data_ratio >= 5.0)
 
-    fig, ax = plt.subplots(figsize=(5, 3))
+    fig, ax = plt.subplots(figsize=figsize)
 
     # ===== 主曲线 =====
     for i, jac_key, xs, ys in series:
@@ -622,15 +629,33 @@ def plot_module_validity(
     ax.set_xlabel(x_label, fontsize=label_size)
     ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=label_size)
 
-    x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
-    ax.set_xlim(all_x.min() - x_pad, all_x.max() + x_pad)
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+    if xlim is None:
+        x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
+        ax.set_xlim(all_x.min() - x_pad, all_x.max() + x_pad)
+    else:
+        ax.set_xlim(xlim)
+
+    if x_major_ticks is not None:
+        ax.xaxis.set_major_locator(plt.FixedLocator(x_major_ticks))
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+    if x_minor_ticks is not None:
+        ax.xaxis.set_minor_locator(plt.FixedLocator(x_minor_ticks))
 
     if use_log_y:
         ax.set_yscale("log")
-        ax.set_ylim(y_min / 1.22, y_max * 1.22)
-        ax.yaxis.set_major_locator(LogLocator(base=10.0))
-        ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2,3,4,5,6,7,8,9)))
+        if ylim is None:
+            ax.set_ylim(y_min / 1.22, y_max * 1.22)
+        else:
+            ax.set_ylim(ylim)
+        if y_major_ticks is not None:
+            ax.yaxis.set_major_locator(plt.FixedLocator(y_major_ticks))
+        else:
+            ax.yaxis.set_major_locator(LogLocator(base=10.0))
+        if y_minor_ticks is not None:
+            ax.yaxis.set_minor_locator(plt.FixedLocator(y_minor_ticks))
+        else:
+            ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2, 3, 4, 5, 6, 7, 8, 9)))
 
         def y_major_formatter(y, pos):
             if y <= 0:
@@ -642,17 +667,24 @@ def plot_module_validity(
 
         ax.yaxis.set_major_formatter(FuncFormatter(y_major_formatter))
         ax.yaxis.set_minor_formatter(NullFormatter())
-        ax.grid(True, which="major", axis="both", linestyle="-", linewidth=1)
-        ax.grid(True, which="minor", axis="y", linestyle="-", linewidth=0.5, alpha=0.35)
     else:
-        y_pad = max(0.02, 0.08 * (y_max - y_min))
-        ax.set_ylim(max(0.0, y_min - y_pad), y_max + y_pad)
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
-        ax.grid(True, which="major", axis="both", linestyle="-", linewidth=1)
+        if ylim is None:
+            y_pad = max(0.02, 0.08 * (y_max - y_min))
+            ax.set_ylim(max(0.0, y_min - y_pad), y_max + y_pad)
+        else:
+            ax.set_ylim(ylim)
+        if y_major_ticks is not None:
+            ax.yaxis.set_major_locator(plt.FixedLocator(y_major_ticks))
+        else:
+            ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+        if y_minor_ticks is not None:
+            ax.yaxis.set_minor_locator(plt.FixedLocator(y_minor_ticks))
 
-    ax.tick_params(axis="both", which="major", labelsize=tick_size,
+    ax.grid(True, which="major", linestyle="-", linewidth=1)
+
+    ax.tick_params(axis="both", which="major", labelsize=ticks_size,
                    direction="out", length=6, width=1)
-    ax.tick_params(axis="both", which="minor", labelsize=tick_size,
+    ax.tick_params(axis="both", which="minor", labelsize=ticks_size,
                    direction="out", length=3, width=1)
     for spine in ax.spines.values():
         spine.set_linewidth(1)
