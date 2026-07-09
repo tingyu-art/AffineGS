@@ -31,8 +31,13 @@ def build_event_density_map(events, H, W, smooth_k=9, device='cuda'):
 def divergence_regularizer(
     flow,
     eps=1e-6,
-    div_q=0.8,
+    div_q=None,
+    top_ratio=0.1,
 ):
+    top_ratio = float(top_ratio)
+    if top_ratio <= 0.0:
+        return flow.new_zeros(())
+
     u = flow.unsqueeze(0)  # [1, 2, H, W]
     u_pad = F.pad(u, (1, 1, 1, 1), mode='replicate')
 
@@ -45,7 +50,12 @@ def divergence_regularizer(
     div = du_dh + dv_dw
     abs_div = div.abs()
 
-    tau = torch.quantile(abs_div.detach(), div_q)
+    if div_q is None:
+        div_q = max(0.0, min(1.0, 1.0 - top_ratio))
+    if top_ratio >= 1.0:
+        tau = abs_div.detach().new_zeros(())
+    else:
+        tau = torch.quantile(abs_div.detach(), div_q)
     excess_div = torch.clamp(abs_div - tau, min=0.0)
     loss_div = torch.sqrt(excess_div ** 2 + eps ** 2).mean()
 

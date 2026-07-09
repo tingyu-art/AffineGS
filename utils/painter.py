@@ -573,6 +573,11 @@ def plot_module_validity(
     ticks_size=10,
     legend_size=10,
     label_size=12,
+    legend_mode="split",
+    combined_legend_loc="upper center",
+    combined_legend_anchor=(0.5, 1.24),
+    combined_legend_ncol=2,
+    combined_legend_label_mode="flow_method",
 ):
     assert metric in ["rmse", "aee"], "metric 必须是 rmse 或 aee"
 
@@ -627,7 +632,7 @@ def plot_module_validity(
 
     # ===== 坐标轴 =====
     ax.set_xlabel(x_label, fontsize=label_size)
-    ax.set_ylabel(f"{metric.upper()} $[px]$", fontsize=label_size)
+    ax.set_ylabel(f"{metric.upper()} $[px/ms]$", fontsize=label_size)
 
     if xlim is None:
         x_pad = max(10.0, 0.03 * (all_x.max() - all_x.min()))
@@ -689,7 +694,7 @@ def plot_module_validity(
     for spine in ax.spines.values():
         spine.set_linewidth(1)
 
-    # ===== 图例：拆成两个独立图例 =====
+    # ===== 图例 =====
     color_handles = [
         mlines.Line2D([], [], color=colors[0], marker=markers[0], linestyle='None',
                       markersize=marker_size, label=flow_names[0]),
@@ -709,33 +714,67 @@ def plot_module_validity(
         for key in style_keys
     ]
 
-    # 保持原来的双图例布局：右上角是三个流场标签，偏左是模块开关标签。
-    legend1 = ax.legend(
-        handles=color_handles,
-        loc="upper right",
-        bbox_to_anchor=(1.0, 1.02),
-        ncol=1,
-        frameon=True,
-        fontsize=legend_size,
-        framealpha=0.6,
-        borderpad=0.3,
-        handletextpad=0.5,
-        labelspacing=0.35,
-    )
-    ax.add_artist(legend1)
+    if legend_mode == "combined":
+        def combined_label(i, key):
+            if combined_legend_label_mode == "method_case":
+                return f"{style_names[key]}-case{i + 1}"
+            return f"{flow_names[i]} {style_names[key]}"
 
-    ax.legend(
-        handles=style_handles,
-        loc="upper right",
-        bbox_to_anchor=style_legend_anchor,
-        frameon=True,
-        fontsize=legend_size,
-        framealpha=0.6,
-        borderpad=0.3,
-        handlelength=1.8,
-        handletextpad=0.6,
-        labelspacing=0.35,
-    )
+        combined_handles = [
+            mlines.Line2D(
+                [], [],
+                color=colors[i],
+                marker=markers[i],
+                linestyle=style_linestyles[key],
+                linewidth=line_width,
+                markersize=marker_size,
+                label=combined_label(i, key),
+            )
+            for i in range(len(flow_names))
+            for key in style_keys
+        ]
+        ax.legend(
+            handles=combined_handles,
+            loc=combined_legend_loc,
+            bbox_to_anchor=combined_legend_anchor,
+            ncol=combined_legend_ncol,
+            frameon=True,
+            fontsize=legend_size,
+            framealpha=0.6,
+            borderpad=0.3,
+            handlelength=1.8,
+            handletextpad=0.6,
+            columnspacing=1.2,
+            labelspacing=0.35,
+        )
+    else:
+        # 保持原来的双图例布局：右上角是三个流场标签，偏左是模块开关标签。
+        legend1 = ax.legend(
+            handles=color_handles,
+            loc="upper right",
+            bbox_to_anchor=(1.0, 1.02),
+            ncol=1,
+            frameon=True,
+            fontsize=legend_size,
+            framealpha=0.6,
+            borderpad=0.3,
+            handletextpad=0.5,
+            labelspacing=0.35,
+        )
+        ax.add_artist(legend1)
+
+        ax.legend(
+            handles=style_handles,
+            loc="upper right",
+            bbox_to_anchor=style_legend_anchor,
+            frameon=True,
+            fontsize=legend_size,
+            framealpha=0.6,
+            borderpad=0.3,
+            handlelength=1.8,
+            handletextpad=0.6,
+            labelspacing=0.35,
+        )
 
     fig.tight_layout()
 

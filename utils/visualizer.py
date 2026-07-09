@@ -380,7 +380,7 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
 
 def create_colorbar(v_min, v_max, cmap='viridis', orientation='vertical', 
                    format_str="%.2f", figsize=None, output_file=None,
-                   fontsize=12, label='EPE [px]'):
+                   fontsize=12, label='EPE [px/ms]'):
     """
     独立生成颜色条，保持一致的布局和1:3的宽高比
     

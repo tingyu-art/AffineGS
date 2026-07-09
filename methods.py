@@ -81,17 +81,16 @@ def inr_est(evts, H=256, W=256):
 
 CLASSICAL_NUM_BINS = 21
 CLASSICAL_PAIR_OFFSET = 5
-FARNEBACK_CLAHE = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
 
 def _normalize_voxel_grid(vg):
     return (vg * 255.0 / (torch.max(vg) + 1e-8)).detach().cpu().numpy().clip(0, 255).astype(np.uint8)
 
 
-def _enhance_farneback_frame(frame):
-    frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    frame = FARNEBACK_CLAHE.apply(frame)
-    return cv2.GaussianBlur(frame, (5, 5), 1.5)
+def _prepare_farneback_frame(frame, blur_ksize=(3, 3)):
+    if blur_ksize is None:
+        return frame
+    return cv2.blur(frame, blur_ksize)
 
 
 def _resize_flow_frames(vg, resize_factor):
@@ -110,102 +109,171 @@ def _restore_flow_resolution(flow, H, W, resize_factor):
     return flow * resize_factor
 
 
-def of_vg(evts, H=256, W=256):
-    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
-    vg = _normalize_voxel_grid(vg)
-    
+def _resolution_band(H, W):
+    pixels = int(H) * int(W)
+    if pixels <= 256 * 256:
+        return "low"
+    if pixels <= 512 * 512:
+        return "medium"
+    return "high"
+
+
+def _resolve_ilk_params(H, W, profile="auto", radius=None, num_warp=None,
+                        resize_factor=None, blur_ksize="auto"):
+    if profile == "auto":
+        profile = _resolution_band(H, W)
+
+    presets = {
+        "quality": dict(radius=7,  num_warp=5, resize_factor=1.0, blur_ksize=None),
+        "low":     dict(radius=7,  num_warp=5, resize_factor=1.0, blur_ksize=None),
+        "medium":  dict(radius=8,  num_warp=3, resize_factor=1.35, blur_ksize=None),
+        "high":    dict(radius=10, num_warp=2, resize_factor=1.75, blur_ksize=(3, 3)),
+        "fast":    dict(radius=12, num_warp=2, resize_factor=2.0, blur_ksize=(5, 5)),
+    }
+    if profile not in presets:
+        raise ValueError(f"Unknown ILK profile={profile!r}; expected one of {sorted(presets)} or 'auto'.")
+
+    params = presets[profile].copy()
+    if radius is not None:
+        params["radius"] = int(radius)
+    if num_warp is not None:
+        params["num_warp"] = int(num_warp)
+    if resize_factor is not None:
+        params["resize_factor"] = float(resize_factor)
+    if blur_ksize != "auto":
+        params["blur_ksize"] = blur_ksize
+    return params
+
+
+def _resolve_farneback_params(H, W, profile="auto", resize_factor=None):
+    if profile == "auto":
+        profile = _resolution_band(H, W)
+
+    presets = {
+        "quality": dict(resize_factor=1.0, levels=3, winsize=15, iterations=15, blur_ksize=(3, 3)),
+        "low":     dict(resize_factor=1.0, levels=3, winsize=15, iterations=15, blur_ksize=(3, 3)),
+        "medium":  dict(resize_factor=1.25, levels=3, winsize=17, iterations=10, blur_ksize=(3, 3)),
+        "high":    dict(resize_factor=1.5, levels=3, winsize=19, iterations=8, blur_ksize=(3, 3)),
+        "fast":    dict(resize_factor=2.0, levels=3, winsize=21, iterations=5, blur_ksize=(5, 5)),
+    }
+    if profile not in presets:
+        raise ValueError(f"Unknown Farneback profile={profile!r}; expected one of {sorted(presets)} or 'auto'.")
+
+    params = presets[profile].copy()
+    if resize_factor is not None:
+        params["resize_factor"] = float(resize_factor)
+    params.update(dict(pyr_scale=0.5, poly_n=7, poly_sigma=1.3, flags=0))
+    return params
+
+
+def _prepare_ilk_frame(frame, blur_ksize=None):
+    frame = frame.astype(np.float32)
+    if blur_ksize is not None:
+        frame = cv2.GaussianBlur(frame, blur_ksize, 0)
+    return frame
+
+
+def _run_farneback_from_voxel_grid(vg, dt, H, W, profile="auto", resize_factor=None):
+    params = _resolve_farneback_params(H, W, profile=profile, resize_factor=resize_factor)
+    vg, actual_resize = _resize_flow_frames(vg, params["resize_factor"])
+
     flows = []
     for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = _enhance_farneback_frame(vg[t])
-        img2 = _enhance_farneback_frame(vg[t + CLASSICAL_PAIR_OFFSET])
-        f = cv2.calcOpticalFlowFarneback(img1, img2, None,
-            0.5, 4, 25, 5, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
+        img1 = _prepare_farneback_frame(vg[t], params["blur_ksize"])
+        img2 = _prepare_farneback_frame(vg[t + CLASSICAL_PAIR_OFFSET], params["blur_ksize"])
+        f = cv2.calcOpticalFlowFarneback(
+            img1, img2, None,
+            params["pyr_scale"],
+            params["levels"],
+            params["winsize"],
+            params["iterations"],
+            params["poly_n"],
+            params["poly_sigma"],
+            params["flags"],
+        )
         flows.append(f)
-    
-    flow_mean = np.mean(flows, axis=0)
-    u = flow_mean[..., 1]/(CLASSICAL_PAIR_OFFSET*dt)
-    v = flow_mean[..., 0]/(CLASSICAL_PAIR_OFFSET*dt)
+
+    flow_mean = _restore_flow_resolution(np.mean(flows, axis=0), H, W, actual_resize)
+    u = flow_mean[..., 1] / (CLASSICAL_PAIR_OFFSET * dt)
+    v = flow_mean[..., 0] / (CLASSICAL_PAIR_OFFSET * dt)
     div, vor = compute_flow_quantities(u, v)
     return u, v, div, vor
 
-def of_est(evts, H=256, W=256):
-    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
-    vg = _normalize_voxel_grid(vg)
-    
-    flows = []
-    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = _enhance_farneback_frame(vg[t])
-        img2 = _enhance_farneback_frame(vg[t + CLASSICAL_PAIR_OFFSET])
-        f = cv2.calcOpticalFlowFarneback(img1, img2, None,
-            0.5, 4, 25, 5, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
-        flows.append(f)
-    
-    flow_mean = np.mean(flows, axis=0)
-    u = flow_mean[..., 1]/(CLASSICAL_PAIR_OFFSET*dt)
-    v = flow_mean[..., 0]/(CLASSICAL_PAIR_OFFSET*dt)
-    div, vor = compute_flow_quantities(u, v)
-    return u, v, div, vor
 
-
-def ilk_vg(evts, radius=7, num_warp=5, H=256, W=256):
-    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
-    vg = _normalize_voxel_grid(vg)
+def _run_ilk_from_voxel_grid(vg, dt, H, W, profile="auto", radius=None, num_warp=None,
+                             resize_factor=None, blur_ksize="auto"):
+    params = _resolve_ilk_params(
+        H, W,
+        profile=profile,
+        radius=radius,
+        num_warp=num_warp,
+        resize_factor=resize_factor,
+        blur_ksize=blur_ksize,
+    )
+    vg, actual_resize = _resize_flow_frames(vg, params["resize_factor"])
 
     flows_u, flows_v = [], []
-
     for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = vg[t].astype(np.float32)
-        img2 = vg[t + CLASSICAL_PAIR_OFFSET].astype(np.float32)
+        img1 = _prepare_ilk_frame(vg[t], params["blur_ksize"])
+        img2 = _prepare_ilk_frame(vg[t + CLASSICAL_PAIR_OFFSET], params["blur_ksize"])
 
         u, v = optical_flow_ilk(
             img1, img2,
-            radius=radius,
-            num_warp=num_warp,
+            radius=params["radius"],
+            num_warp=params["num_warp"],
             gaussian=False,
-            prefilter=True
+            prefilter=True,
         )
 
         flows_u.append(u)
         flows_v.append(v)
 
-    # temporal averaging
-    u_mean = np.mean(flows_u, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
-    v_mean = np.mean(flows_v, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
+    u_mean = _restore_flow_resolution(np.mean(flows_u, axis=0), H, W, actual_resize) / (CLASSICAL_PAIR_OFFSET * dt)
+    v_mean = _restore_flow_resolution(np.mean(flows_v, axis=0), H, W, actual_resize) / (CLASSICAL_PAIR_OFFSET * dt)
     div, vor = compute_flow_quantities(u_mean, v_mean)
-    
     return u_mean, v_mean, div, vor
 
-def ilk_est(evts, radius=7, num_warp=5, H=256, W=256):
+
+def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None):
+    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
+    return _run_farneback_from_voxel_grid(vg, dt, H, W, profile=profile, resize_factor=resize_factor)
+
+def of_est(evts, H=256, W=256, profile="auto", resize_factor=None):
     vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
+    return _run_farneback_from_voxel_grid(vg, dt, H, W, profile=profile, resize_factor=resize_factor)
 
-    flows_u, flows_v = [], []
 
-    for t in range(vg.shape[0] - CLASSICAL_PAIR_OFFSET):
-        img1 = vg[t].astype(np.float32)
-        img2 = vg[t + CLASSICAL_PAIR_OFFSET].astype(np.float32)
+def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
+           profile="auto", resize_factor=None, blur_ksize="auto"):
+    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
+    return _run_ilk_from_voxel_grid(
+        vg, dt, H, W,
+        profile=profile,
+        radius=radius,
+        num_warp=num_warp,
+        resize_factor=resize_factor,
+        blur_ksize=blur_ksize,
+    )
 
-        u, v = optical_flow_ilk(
-            img1, img2,
-            radius=radius,
-            num_warp=num_warp,
-            gaussian=False,
-            prefilter=True
-        )
-
-        flows_u.append(u)
-        flows_v.append(v)
-
-    # temporal averaging
-    u_mean = np.mean(flows_u, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
-    v_mean = np.mean(flows_v, axis=0)/(CLASSICAL_PAIR_OFFSET*dt)
-    div, vor = compute_flow_quantities(u_mean, v_mean)
-    
-    return u_mean, v_mean, div, vor
+def ilk_est(evts, radius=None, num_warp=None, H=256, W=256,
+            profile="auto", resize_factor=None, blur_ksize="auto"):
+    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+    vg = _normalize_voxel_grid(vg)
+    return _run_ilk_from_voxel_grid(
+        vg, dt, H, W,
+        profile=profile,
+        radius=radius,
+        num_warp=num_warp,
+        resize_factor=resize_factor,
+        blur_ksize=blur_ksize,
+    )
 
 
 def default_grids(height=256, width=512):

@@ -1,0 +1,68 @@
+{
+ "JHTDB-isotropic": {
+  "w/o div. reg.": {
+   "w_div": 0.0,
+   "rmse": 0.4202,
+   "aee": 0.2701,
+   "mean_abs_div": 0.050652,
+   "rmse_div": 0.126187,
+   "std_rmse": 0.0292,
+   "std_aee": 0.0119,
+   "num_repeats": 3
+  },
+  "w/ div. reg.": {
+   "w_div": 10.0,
+   "rmse": 0.2165,
+   "aee": 0.1707,
+   "mean_abs_div": 0.007594,
+   "rmse_div": 0.010084,
+   "std_rmse": 0.0034,
+   "std_aee": 0.0037,
+   "num_repeats": 3
+  }
+ },
+ "DNS-turbulence": {
+  "w/o div. reg.": {
+   "w_div": 0.0,
+   "rmse": 0.3275,
+   "aee": 0.1982,
+   "mean_abs_div": 0.044124,
+   "rmse_div": 0.114604,
+   "std_rmse": 0.0343,
+   "std_aee": 0.0122,
+   "num_repeats": 3
+  },
+  "w/ div. reg.": {
+   "w_div": 10.0,
+   "rmse": 0.1204,
+   "aee": 0.0978,
+   "mean_abs_div": 0.004124,
+   "rmse_div": 0.009484,
+   "std_rmse": 0.005,
+   "std_aee": 0.0036,
+   "num_repeats": 3
+  }
+ },
+ "SQG": {
+  "w/o div. reg.": {
+   "w_div": 0.0,
+   "rmse": 0.5419,
+   "aee": 0.3506,
+   "mean_abs_div": 0.061019,
+   "rmse_div": 0.139063,
+   "std_rmse": 0.0775,
+   "std_aee": 0.0241,
+   "num_repeats": 3
+  },
+  "w/ div. reg.": {
+   "w_div": 10.0,
+   "rmse": 0.3313,
+   "aee": 0.2528,
+   "mean_abs_div": 0.013928,
+   "rmse_div": 0.021436,
+   "std_rmse": 0.0039,
+   "std_aee": 0.0026,
+   "num_repeats": 3
+  }
+ }
+}

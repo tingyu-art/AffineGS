@@ -206,7 +206,7 @@ def train_gaussian_flow(
         else:
             weight_div = 0
             
-        div_loss = divergence_regularizer(pred_flow)
+        div_loss = divergence_regularizer(pred_flow, top_ratio=cfg.div_top_ratio)
         total_loss = (
             loss_data
             + weight_div * div_loss
