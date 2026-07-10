@@ -7,7 +7,7 @@ This repository contains the official code for the submitted paper __AffineGS: V
 
 
 ## Methods
-![Image](https://github.com/tingyu-art/AffineGS/blob/main/data/fig2.pdf)
+![Method overview](data/fig2.png)
 The velocity field is modeled as a compact weighted superposition of localized anisotropic Gaussian primitives with continuous spatial support. Beyond a local velocity vector, each primitive is equipped with a velocity-gradient Jacobian matrix, which explicitly represents affine velocity variations within its neighborhood and improves the capacity to capture complex flow structures. The Gaussian parameters are estimated through test-time optimization in a contrast-maximization framework, where collapse-suppression regularization is incorporated to improve physical consistency. An adaptive density control strategy further refines the primitive distribution, while localized Gaussian evaluation and tile-based rendering reduce the computational cost.
 
 
