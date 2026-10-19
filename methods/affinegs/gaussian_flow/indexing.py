@@ -1,20 +1,27 @@
+import math
+
 import torch
+
+
+GAUSSIAN_VALUE_THRESHOLD = 5e-4
 
 
 class GaussianSpatialIndexer:
     """
-    与原版接口完全兼容。
-    build() 使用基于 bincount 的计数排序（O(M+T)），比 argsort O(M log M) 更快。
+    由高斯响应阈值确定支持区域，再构建 Gaussian 到 tile 的索引。
     """
 
     def __init__(self, means, scales, rotations, domain_size,
-                 tile_size, truncation_sigma=4.0, max_tile_span=16):
+                 tile_size, value_threshold=GAUSSIAN_VALUE_THRESHOLD, max_tile_span=16):
         self.means            = means
         self.scales           = scales
         self.rotations        = rotations.reshape(-1, 1)
         self.H, self.W        = domain_size
         self.tile_size        = tile_size
-        self.truncation_sigma = truncation_sigma
+        self.value_threshold  = float(value_threshold)
+        if not 0.0 < self.value_threshold < 1.0:
+            raise ValueError("value_threshold must be between 0 and 1")
+        self.support_radius   = math.sqrt(-2.0 * math.log(self.value_threshold))
         self.max_tile_span    = max_tile_span
         self.device           = means.device
 
@@ -39,8 +46,8 @@ class GaussianSpatialIndexer:
 
         sigma_hh = (s_h * cos_t) ** 2 + (s_w * sin_t) ** 2
         sigma_ww = (s_h * sin_t) ** 2 + (s_w * cos_t) ** 2
-        radius_h = self.truncation_sigma * torch.sqrt(sigma_hh)
-        radius_w = self.truncation_sigma * torch.sqrt(sigma_ww)
+        radius_h = self.support_radius * torch.sqrt(sigma_hh)
+        radius_w = self.support_radius * torch.sqrt(sigma_ww)
 
         min_h = self.means[:, 0] - radius_h
         max_h = self.means[:, 0] + radius_h

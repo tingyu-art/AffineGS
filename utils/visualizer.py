@@ -245,7 +245,7 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
                     magFlag=True, slFlag=False, colorbar_flag=True,
                     step=1, quiver_step=16, v_min=None, v_max=None, 
                     scale=None, figsize=(5, 3), cbar_ticks=None, 
-                    cbar_tick_size=12):
+                    cbar_tick_size=12, cbar_label=None, cbar_label_size=12):
     """
     可视化速度场：
     - 背景：速度大小的热力图
@@ -261,6 +261,8 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
     - step: 背景图采样间隔（默认=1，表示全分辨率）
     - quiver_step: 箭头稀疏采样间隔（默认=10）
     - cbar_ticks: 颜色条刻度设置
+    - cbar_label: 颜色条标签（包含单位）；None 保持不显示标签
+    - cbar_label_size: 颜色条标签字号
     """
     # 转换为numpy数组（如果输入是PyTorch张量）
     if isinstance(u, torch.Tensor):
@@ -343,8 +345,8 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
             if cbar_tick_size is not None:
                 cbar.ax.tick_params(labelsize=cbar_tick_size)
                 
-            # 设置颜色条标签
-            # cbar.set_label(data_label, rotation=270, labelpad=15)
+            if cbar_label is not None:
+                cbar.set_label(cbar_label, fontsize=cbar_label_size, labelpad=8)
     else:
         plt.imshow(0 * display_data[::step, ::step], cmap='viridis', origin='lower')
         if colorbar_flag:
@@ -379,10 +381,11 @@ def plot_flow_field(u, v, u_gt=None, v_gt=None, output_file=None,
     
 
 def create_colorbar(v_min, v_max, cmap='viridis', orientation='vertical', 
-                   format_str="%.2f", figsize=None, output_file=None,
+                   format_str="%.1f", figsize=None, output_file=None,
                    fontsize=12, label='EPE [px/ms]'):
     """
-    独立生成颜色条，保持一致的布局和1:3的宽高比
+    独立生成颜色条。先按无标签的原始版本完成布局，再扩展画布放置标签，
+    因此添加标签不会改变颜色条本体的尺寸。
     
     参数：
     ◦ v_min: 颜色条的最小值
@@ -390,7 +393,7 @@ def create_colorbar(v_min, v_max, cmap='viridis', orientation='vertical',
     ◦ cmap: 颜色映射，默认为'viridis'
     ◦ orientation: 颜色条方向，'vertical'或'horizontal'
     ◦ format_str: 刻度格式字符串
-    ◦ figsize: 图形尺寸（将自动设置为保持1:3宽高比）
+    ◦ figsize: 不含外扩标签的基础图形尺寸
     ◦ output_file: 输出文件路径（可选）
     ◦ fontsize: 字体大小
     ◦ label: 颜色条标签文本
@@ -423,13 +426,8 @@ def create_colorbar(v_min, v_max, cmap='viridis', orientation='vertical',
     tick_step = (v_max - v_min) / 5  # 分成6个刻度
     ticks = np.linspace(v_min, v_max, 6)  # 创建6个均匀分布的刻度
 
-    # 格式化刻度标签，确保显示为需要的格式
-    formatted_ticks = []
-    for tick in ticks:
-        if tick >= 10:
-            formatted_ticks.append(f"{tick:.0f}")  # 格式化为整数
-        else:
-            formatted_ticks.append(f"{tick:.2f}")  # 保留两位小数
+    # 按 format_str 统一格式化刻度；默认保留一位小数。
+    formatted_ticks = [format_str % tick for tick in ticks]
 
     # 设置刻度
     cbar.set_ticks(ticks)
@@ -437,21 +435,39 @@ def create_colorbar(v_min, v_max, cmap='viridis', orientation='vertical',
     
     # 设置字体大小
     cbar.ax.tick_params(labelsize=24)
-    
-    # 设置标签 - 只改变标签方向，其他保持不变
-    if orientation == 'vertical':
-        # 只改变标签文本方向，保持其他所有设置不变
-        cbar.set_label(label, rotation=90, labelpad=2, fontsize=fontsize)
-    else:
-        cbar.set_label(label, fontsize=fontsize)
-    
-    # 调整布局以确保一致性
-    plt.tight_layout(pad=1.0)
+
+    # 先复现最初无标签版本的布局，并记录颜色条本体的物理尺寸。
+    fig.tight_layout(pad=1.0)
+
+    # 仅扩展标签所在方向的画布，再添加标签；cax 的物理位置和尺寸保持不变。
+    if label is not None:
+        fig_w, fig_h = fig.get_size_inches()
+        pos = cbar.ax.get_position()
+        x0, y0 = pos.x0 * fig_w, pos.y0 * fig_h
+        cax_w, cax_h = pos.width * fig_w, pos.height * fig_h
+        label_extra = fontsize / 72.0 + 0.2
+
+        if orientation == 'vertical':
+            new_fig_w = fig_w + label_extra
+            fig.set_size_inches(new_fig_w, fig_h, forward=True)
+            cbar.ax.set_position([
+                x0 / new_fig_w, y0 / fig_h,
+                cax_w / new_fig_w, cax_h / fig_h,
+            ])
+            cbar.set_label(label, rotation=90, labelpad=2, fontsize=fontsize)
+        else:
+            new_fig_h = fig_h + label_extra
+            fig.set_size_inches(fig_w, new_fig_h, forward=True)
+            cbar.ax.set_position([
+                x0 / fig_w, y0 / new_fig_h,
+                cax_w / fig_w, cax_h / new_fig_h,
+            ])
+            cbar.set_label(label, fontsize=fontsize)
     
     # 保存或显示
     if output_file is not None:
-        # 确保保存的图片保持1:3宽高比
-        plt.savefig(output_file, bbox_inches='tight', pad_inches=0.1, dpi=300)
+        # bbox_inches='tight' 向外扩展导出区域以容纳标签，不改变 cax 尺寸。
+        fig.savefig(output_file, bbox_inches='tight', pad_inches=0.1, dpi=300)
         print(f"Colorbar saved to {output_file}")
     else:
         plt.show()

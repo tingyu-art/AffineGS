@@ -411,10 +411,11 @@ def adaptive_density_control(
                 random_mask = ~in_range
                 if random_mask.any():
                     n_rand = int(random_mask.sum().item())
-                    clone_log_scale[random_mask] = torch.stack([
-                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(model.init_scale_h),
-                        torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * np.log(model.init_scale_w),
-                    ], dim=1)
+                    # Use the same independent, actual-scale uniform initialization.
+                    clone_log_scale[random_mask] = torch.log(torch.stack([
+                        1.0 + torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * (model.init_scale_h - 1.0),
+                        1.0 + torch.rand(n_rand, device=device, dtype=model.log_scale.dtype) * (model.init_scale_w - 1.0),
+                    ], dim=1))
                     clone_rotation[random_mask] = torch.rand(
                         n_rand, 1, device=device, dtype=model.rotation.dtype
                     ) * torch.pi

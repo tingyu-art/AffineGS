@@ -229,7 +229,7 @@ def train_gaussian_flow(
         if i % rebuild_interval_now == 0:
             model.rebuild_indexer()
 
-        if i >= cfg.phase[0] and i % cfg.density_interval == 0:
+        if cfg.enable_density_control and i >= cfg.phase[0] and i % cfg.density_interval == 0:
             phase_flag = decide_phase(i, cfg.phase)
             if phase_flag:
                 has_changed = adaptive_density_control(

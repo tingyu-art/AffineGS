@@ -37,7 +37,7 @@ class GaussianFlowResult:
 
 @dataclass
 class GaussianFlowConfig:
-    """所有超参数集中在此处，不改变原始代码中的默认值。"""
+    """所有超参数集中在此处。"""
 
     # ── 分辨率 ──────────────────────────────────────────────────────────────
     H: int = 256                    # 流场分辨率（行）
@@ -46,14 +46,15 @@ class GaussianFlowConfig:
     # ── 模型初始化 ───────────────────────────────────────────────────────────
     init_n: int = 300               # 初始高斯数量
     tile_size: int = 32             # 分块大小
-    init_scale_h: float = 10.0      # log_scale[:,0] 初始化上界：rand * log(init_scale_h)
-    init_scale_w: float = 7.0       # log_scale[:,1] 初始化上界：rand * log(init_scale_w)
+    init_scale_h: float = 7.0       # 实际尺度 s_h 独立均匀采样于 [1, init_scale_h)，再取 log
+    init_scale_w: float = 7.0       # 实际尺度 s_w 独立均匀采样于 [1, init_scale_w)，再取 log
     enable_jacobian: bool = True    # 是否启用雅可比矩阵参数
     jacobian_mode: str = "full"     # full=[[a,b],[c,d]]；trace_free=[[a,b],[c,-a]]
 
     # ── 训练控制 ─────────────────────────────────────────────────────────────
     iterations: int = 300           # 总迭代次数
     rebuild_interval: int = 10      # 重建空间索引的间隔
+    enable_density_control: bool = True  # False 时固定 init_n，跳过 clone/split/prune
     density_interval: int = 50      # 密度控制（clone/split/prune）执行间隔
     phase: List[int] = field(default_factory=lambda: [50, 200, 250])   # 训练阶段分界点 [phase0_end, phase1_end, phase2_end]
 

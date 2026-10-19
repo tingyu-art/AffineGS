@@ -5,21 +5,16 @@
 
 namespace {
 
-// Mahalanobis-distance soft support: term = r^2, so term=16 is 4 sigma.
-constexpr float kGateCenter = 16.0f;
-constexpr float kGateSlope  = -2.0f;
+// Truncate the Gaussian response before multiplying by opacity.
+constexpr float kGaussianValueThreshold = 5e-4f;
 
-// Keep launch/layout tuned independently from the support gate.
+// Keep launch/layout tuned independently from the value threshold.
 constexpr int kThreadsFwd   = 512;   // 32x32 tile -> 1024 pixels -> 2 slices per tile
 constexpr int kThreadsBwd   = 256;   // good balance for warp-reduce backward
 constexpr int kChunkFwd     = 64;    // fewer chunk iterations / syncs
 constexpr int kChunkBwd     = 64;
 constexpr int kWarpSize     = 32;
 constexpr int kWarpsPerBwd  = kThreadsBwd / kWarpSize;
-
-__device__ __forceinline__ float sigmoidf_exact(float x) {
-    return 1.0f / (1.0f + expf(-x));
-}
 
 __device__ __forceinline__ float warp_sum(float v) {
     #pragma unroll
@@ -163,8 +158,8 @@ void gaussian_render_forward_kernel_tiled_exact(
                 const float term = dh * dh * gj.si.x
                                  + 2.0f * dh * dw * gj.si.y
                                  + dw * dw * gj.si.w;
-                const float gate = sigmoidf_exact(kGateSlope * (term - kGateCenter));
-                const float base = expf(-0.5f * term) * gate;
+                const float base = expf(-0.5f * term);
+                if (base < kGaussianValueThreshold) continue;
                 const float w    = base * gj.op;
 
                 const float v_h = gj.vel.x + gj.J.x * dh + gj.J.y * dw;
@@ -329,8 +324,8 @@ void gaussian_render_backward_kernel_warp_reduce_exact(
                 const float term = dh * dh * gj.si.x
                                  + 2.0f * dh * dw * gj.si.y
                                  + dw * dw * gj.si.w;
-                const float gate = sigmoidf_exact(kGateSlope * (term - kGateCenter));
-                const float base = expf(-0.5f * term) * gate;
+                const float base = expf(-0.5f * term);
+                if (base < kGaussianValueThreshold) continue;
                 const float w    = base * gj.op;
 
                 const float v_h = gj.vel.x + gj.J.x * dh + gj.J.y * dw;
@@ -340,7 +335,7 @@ void gaussian_render_backward_kernel_warp_reduce_exact(
                 const float dL_dvh = s_gNh[p] * w;
                 const float dL_dvw = s_gNw[p] * w;
 
-                const float dbase_dterm = base * (2.0f * gate - 2.5f);
+                const float dbase_dterm = -0.5f * base;
                 const float dwgt_dterm  = gj.op * dbase_dterm;
 
                 const float dterm_ddh = 2.0f * (gj.si.x * dh + gj.si.y * dw);

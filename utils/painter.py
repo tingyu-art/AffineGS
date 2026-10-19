@@ -180,6 +180,83 @@ def plot_curvegraph(x_data, y_data_list, legend_names_en, legend_names_zh,
 
 
         
+def plot_divergence_weight_sweep(result_path, output_dir=None, save=True, *,
+                                 metrics=("rmse", "aee"), ylim=None,
+                                 y_major_ticks=None):
+    """Plot selected metrics for EXP1's fixed-top-ratio weight sweep.
+
+    Reads saved repeats, validates completeness, and plots their arithmetic
+    means. Returns mean/std summaries so plotting never requires retraining.
+    """
+    from pathlib import Path
+
+    result_path = Path(result_path)
+    with result_path.open("r", encoding="utf-8") as f:
+        results = json.load(f)
+    metadata = results["metadata"]
+    weight_values = np.asarray(metadata["w_div_values"], dtype=float)
+    expected_repeats = int(metadata["num_repeats"])
+    flow_names = metadata["flow_names"]
+    metric_specs = (
+        ("rmse", r"RMSE $[px/ms]$", "rmse"),
+        ("aee", r"AEE $[px/ms]$", "aee"),
+    )
+    if not metrics or any(metric not in ("rmse", "aee") for metric in metrics):
+        raise ValueError("metrics must select rmse and/or aee.")
+    summary = {name: {} for name in flow_names}
+    for name in flow_names:
+        for weight in weight_values:
+            key = f"{weight:g}"
+            rows = results["flows"][name][key]
+            if (len(rows) != expected_repeats or
+                    {row["repeat"] for row in rows} != set(range(expected_repeats))):
+                raise ValueError(f"Incomplete repeats for {name}, w={key}.")
+            summary[name][key] = {}
+            for metric, _, _ in metric_specs:
+                values = np.asarray([row[metric] for row in rows], dtype=float)
+                if not np.all(np.isfinite(values)):
+                    raise ValueError(f"Non-finite {metric} for {name}, w={key}.")
+                summary[name][key][metric] = {
+                    "mean": float(values.mean()),
+                    "std": float(values.std()),
+                }
+
+    output_dir = Path(output_dir) if output_dir is not None else result_path.parent
+    if save:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    for metric, ylabel, suffix in metric_specs:
+        if metric not in metrics:
+            continue
+        y_values = [
+            [summary[name][f"{weight:g}"][metric]["mean"] for weight in weight_values]
+            for name in flow_names
+        ]
+        figure_path = output_dir / f"{result_path.stem}-{suffix}.pdf" if save else None
+        # Same Arial font, tab10 colors, markers, grid and sizes as EXP1 curves.
+        with plt.rc_context({"font.family": "Arial", "pdf.fonttype": 42}):
+            plot_curvegraph(
+                x_data=weight_values,
+                y_data_list=y_values,
+                legend_names_en=flow_names,
+                legend_names_zh=flow_names,
+                title_en=None, title_zh=None,
+                xlabel_en=r"Regularization weight $\lambda$",
+                xlabel_zh=r"正则权重 $\lambda$",
+                ylabel_en=ylabel, ylabel_zh=ylabel,
+                ticks_size=10, legend_size=10, label_size=12,
+                xlim=(float(weight_values.min()) - 0.5, float(weight_values.max()) + 0.5),
+                ylim=ylim if ylim is not None else (0, max(float(np.max(y_values)) * 1.1, 1e-6)),
+                y_major_ticks=y_major_ticks,
+                x_major_ticks=weight_values[::2].tolist(),
+                x_minor_ticks=weight_values[1::2].tolist(),
+                filename=str(figure_path) if figure_path is not None else None,
+                figsize=(5, 3),
+            )
+        if figure_path is not None:
+            print(f"Saved: {figure_path}")
+    return summary
+
+
 import json
 import os
 import matplotlib.pyplot as plt
@@ -530,7 +607,12 @@ def plot_vortex_line_panel(
         ax.tick_params(labelsize=tick_fs, direction='out', length=3.5, width=1)
 
         if col == 0:
-            ax.set_ylabel('Vorticity', fontsize=label_fs)
+            # Velocity is measured in px/ms and differentiated over px, so
+            # vorticity has units of inverse milliseconds.
+            ax.set_ylabel(
+                r'Out-of-plane vorticity $[\mathrm{ms}^{-1}]$',
+                fontsize=label_fs,
+            )
         else:
             ax.tick_params(axis='y', left=False, labelleft=False)
 
@@ -558,7 +640,7 @@ def plot_module_validity(
     metric="rmse",
     save_path=None,
     y_scale="auto",
-    x_label="Number of Gaussians (init_n)",
+    x_label=r"Number of Gaussians ($N_{\mathrm{init}}$)",
     style_names=None,
     style_keys=("1", "0"),
     style_linestyles=None,
@@ -583,7 +665,7 @@ def plot_module_validity(
 
     flow_keys  = ["flow0", "flow1", "flow2"]
     if style_names is None:
-        style_names = {"1": "w-J", "0": "w/o-J"}
+        style_names = {"1": "AffineGS", "0": "ConstGS"}
     if style_linestyles is None:
         style_linestyles = {"1": "-", "0": "--"}
 

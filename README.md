@@ -7,7 +7,7 @@ This repository contains the official code for the submitted paper __AffineGS: V
 
 
 ## Methods
-![Method overview](data/fig2_cropped.png)
+[![Method overview](data/fig2_method_overview.svg)](data/fig2_method_overview.pdf)
 The velocity field is modeled as a compact weighted superposition of localized anisotropic Gaussian primitives with continuous spatial support. Beyond a local velocity vector, each primitive is equipped with a velocity-gradient Jacobian matrix, which explicitly represents affine velocity variations within its neighborhood and improves the capacity to capture complex flow structures. The Gaussian parameters are estimated through test-time optimization in a contrast-maximization framework, where collapse-suppression regularization is incorporated to improve physical consistency. An adaptive density control strategy further refines the primitive distribution, while localized Gaussian evaluation and tile-based rendering reduce the computational cost.
 
 
@@ -40,9 +40,11 @@ cd ../../../../
 If the extensions are not compiled successfully, the code will fall back to the PyTorch implementation, but the runtime may be slower.
 
 ## The experiments
-* [EXP1.ipynb](https://github.com/tingyu-art/AffineGS/blob/main/experiments/EXP1.ipynb): evaluates the effectiveness of the affine Gaussian representation and its robustness to key event-generation factors, including particle density, noise level, and divergence regularization.
-* [EXP2.ipynb](https://github.com/tingyu-art/AffineGS/blob/main/experiments/EXP2.ipynb): compares AffineGS with representative baseline methods on synthetic flow fields, including velocity accuracy and gradient-based quantities such as divergence and vorticity.
-* [EXP3.ipynb](https://github.com/tingyu-art/AffineGS/blob/main/experiments/EXP3.ipynb): provides qualitative visual comparisons on real-world event data, highlighting the behavior of AffineGS and baseline methods in practical EBIV scenarios.
+* [EXP1.ipynb](experiments/EXP1.ipynb): representation ablations, robustness and regularization sweeps, including paired sweeps with shared events and initialization.
+* [EXP2.ipynb](experiments/EXP2.ipynb): method comparison on synthetic flow fields and datasets.
+* [EXP3.ipynb](experiments/EXP3.ipynb): real-data flow estimation and visualization; saves velocity fields for appendix evaluation.
+* [APPENDIX.ipynb](experiments/APPENDIX.ipynb): density-control ablation, divergence-regularization sweeps, and FWL/RSAT evaluation using saved EXP3 velocity fields.
+* [IWE_vote/tu.py](experiments/IWE_vote/tu.py): event-warping illustration; saves `discrete_IWE_vote.pdf` beside the script.
 
 
 ## Dataset
