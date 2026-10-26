@@ -13,10 +13,24 @@ from .affinegs.gaussian_flow.training import run_gaussian_flow
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
+EVENT_WINDOW_MS = 3.0
+TEMPORAL_NUM_BINS = 16
+
+
+def _select_event_window(evts):
+    """Use the first 3 ms; preserve absolute timestamps and input ordering."""
+    if len(evts) == 0:
+        raise ValueError("The method requires events in a non-empty 3 ms window")
+    start = evts[:, 2].min()
+    events = evts[(evts[:, 2] >= start) & (evts[:, 2] < start + EVENT_WINDOW_MS)]
+    if events[:, 2].max() <= start:
+        raise ValueError("The method requires at least two distinct event times")
+    return events
+
 
 def affineGS(evts, H=256, W=256):
     cfg = GaussianFlowConfig(verbose=False,H=H, W=W)
-    events = evts[(evts[:, 2] > 0) & (evts[:, 2] < 3)]
+    events = _select_event_window(evts)
     result = run_gaussian_flow(events=events, cfg=cfg, flowgt=None)
     u, v = result.flow[0], result.flow[1]
     div = result.div
@@ -25,7 +39,7 @@ def affineGS(evts, H=256, W=256):
 
 def constGS(evts, H=256, W=256):
     cfg = GaussianFlowConfig(verbose=False, H=H, W=W, enable_jacobian=False)
-    events = evts[(evts[:, 2] > 0) & (evts[:, 2] < 3)]
+    events = _select_event_window(evts)
     result = run_gaussian_flow(events=events, cfg=cfg, flowgt=None)
     u, v = result.flow[0], result.flow[1]
     div = result.div
@@ -33,9 +47,10 @@ def constGS(evts, H=256, W=256):
     return u, v, div, vor
 
 def inr_vg(evts, H=256, W=256):
-    vg, dts = events_to_voxel_grid(evts, 21, H=H, W=W)
+    evts = _select_event_window(evts)
+    vg, dts = events_to_voxel_grid(evts, TEMPORAL_NUM_BINS, H=H, W=W)
     # vg = (vg*255/(torch.max(vg)+1e-8))
-    dt = (dts/20).item()
+    dt = (dts/(TEMPORAL_NUM_BINS - 1)).item()
         
     blur = torch.nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
     vg = vg.unsqueeze(1)     # B×1×W×H
@@ -56,8 +71,9 @@ def inr_vg(evts, H=256, W=256):
     return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
 
 def inr_est(evts, H=256, W=256):
-    vg, dts = events_to_est(evts, 21, H=H, W=W)
-    dt = (dts/20).item()
+    evts = _select_event_window(evts)
+    vg, dts = events_to_est(evts, TEMPORAL_NUM_BINS, H=H, W=W)
+    dt = (dts/(TEMPORAL_NUM_BINS - 1)).item()
 
     blur = torch.nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
     vg = vg.unsqueeze(1)     # B×1×W×H
@@ -79,7 +95,7 @@ def inr_est(evts, H=256, W=256):
     return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
 
 
-CLASSICAL_NUM_BINS = 21
+CLASSICAL_NUM_BINS = TEMPORAL_NUM_BINS
 CLASSICAL_PAIR_OFFSET = 5
 
 
@@ -235,12 +251,14 @@ def _run_ilk_from_voxel_grid(vg, dt, H, W, profile="auto", radius=None, num_warp
 
 
 def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None):
+    evts = _select_event_window(evts)
     vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
     return _run_farneback_from_voxel_grid(vg, dt, H, W, profile=profile, resize_factor=resize_factor)
 
 def of_est(evts, H=256, W=256, profile="auto", resize_factor=None):
+    evts = _select_event_window(evts)
     vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
@@ -249,6 +267,7 @@ def of_est(evts, H=256, W=256, profile="auto", resize_factor=None):
 
 def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
            profile="auto", resize_factor=None, blur_ksize="auto"):
+    evts = _select_event_window(evts)
     vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
@@ -263,6 +282,7 @@ def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
 
 def ilk_est(evts, radius=None, num_warp=None, H=256, W=256,
             profile="auto", resize_factor=None, blur_ksize="auto"):
+    evts = _select_event_window(evts)
     vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
     dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
     vg = _normalize_voxel_grid(vg)
