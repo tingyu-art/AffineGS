@@ -63,7 +63,7 @@ class GaussianFlowConfig:
     lr_j: Optional[float] = None   # Jacobian lr；None = 自动检测（湍流→0.05，其他→0.001）
 
     # ── 损失权重 ─────────────────────────────────────────────────────────────
-    w_div: float = 10             # 散度正则化权重
+    w_div: float = 15             # 散度正则化权重
     div_top_ratio: float = 0.1    # 仅约束 |div| 最大的比例；0=关闭，1=全场
     div_last: int = 500
 

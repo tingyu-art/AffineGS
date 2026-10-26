@@ -26,14 +26,19 @@ def add_event_noise(
     burst_fraction: float = 0.25,
 ) -> torch.Tensor:
     """
-    Additive event-camera noise.
+    Inject background, hot-pixel and burst noise into existing events.
 
-    The returned tensor contains all clean events plus extra noise events:
-        N_out = N_clean + round(N_clean * noise_ratio)
+    Select round(N * noise_ratio) distinct rows and replace their event values;
+    do not append or remove rows. The returned tensor therefore always has N
+    events, sorted by time when noise is injected. The input is not modified.
 
-    noise_ratio is therefore defined as N_added_noise / N_clean. This is the
-    preferred model for background activity, hot pixels, and burst events.
+    noise_ratio is the fraction of existing events selected for corruption and
+    must lie in [0, 1]. The noise budget is split between the same three noise
+    types (50% background, 25% hot pixels, 25% bursts by default).
     """
+    if not 0.0 <= noise_ratio <= 1.0:
+        raise ValueError("noise_ratio must be a fraction in [0, 1]")
+
     clean = events.clone().float()
     N = clean.shape[0]
     if noise_ratio <= 0.0 or N == 0:
@@ -110,8 +115,13 @@ def add_event_noise(
     if not noise_parts:
         return clean
 
-    noisy_events = torch.cat([clean, *noise_parts], dim=0)
-    return _sort_by_time(noisy_events)
+    # Keep the original noise budget and distributions, but apply them to
+    # distinct existing rows instead of increasing the event count.
+    noise_events = torch.cat(noise_parts, dim=0)
+    noise_events[:, 2].clamp_(t_min, t_max)
+    selected_idx = torch.randperm(N, device=device)[:N_noise]
+    clean[selected_idx] = noise_events
+    return _sort_by_time(clean)
 
 
 def corrupt_event_noise(
