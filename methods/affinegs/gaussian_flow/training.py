@@ -170,7 +170,9 @@ def train_gaussian_flow(
     lr_j = _resolve_lr_j(events_map, cfg, supervised)
     optimizer = create_optimizer(model, lr_mu=cfg.lr_mu, lr_j=lr_j)
 
-    lr_lambda_mu = lambda step: (1 / 5) ** (step / cfg.iterations)
+    # Keep the initial value at cfg.lr_mu and linearly decay it to 20% at the
+    # final iteration (3.0 -> 0.6 with the default configuration).
+    lr_lambda_mu = lambda step: 1.0 - 0.8 * min(step / cfg.iterations, 1.0)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
         lr_lambda=[
             lr_lambda_mu if g["name"] == "mu" else (lambda s: 1.0)

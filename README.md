@@ -43,7 +43,7 @@ If the extensions are not compiled successfully, the code will fall back to the 
 * [EXP1.ipynb](experiments/EXP1.ipynb): representation ablations, robustness and regularization sweeps, including paired sweeps with shared events and initialization.
 * [EXP2.ipynb](experiments/EXP2.ipynb): method comparison on synthetic flow fields and datasets.
 * [EXP3.ipynb](experiments/EXP3.ipynb): real-data flow estimation and visualization; saves velocity fields for appendix evaluation.
-* [APPENDIX.ipynb](experiments/APPENDIX.ipynb): density-control ablation, divergence-regularization sweeps, and FWL/RSAT evaluation using saved EXP3 velocity fields.
+* [APPENDIX.ipynb](experiments/APPENDIX.ipynb): density-control ablation and FWL/RSAT evaluation using saved EXP3 velocity fields.
 * [IWE_vote/tu.py](experiments/IWE_vote/tu.py): event-warping illustration; saves `discrete_IWE_vote.pdf` beside the script.
 
 

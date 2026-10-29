@@ -17,12 +17,16 @@ EVENT_WINDOW_MS = 3.0
 TEMPORAL_NUM_BINS = 16
 
 
-def _select_event_window(evts):
-    """Use the first 3 ms; preserve absolute timestamps and input ordering."""
+def _select_event_window(evts, window_ms=EVENT_WINDOW_MS):
+    """Use the first window_ms, or all input events when window_ms is None."""
     if len(evts) == 0:
-        raise ValueError("The method requires events in a non-empty 3 ms window")
+        raise ValueError("The method requires a non-empty event window")
+    if window_ms is not None and (not np.isfinite(window_ms) or window_ms <= 0):
+        raise ValueError("window_ms must be positive and finite, or None")
     start = evts[:, 2].min()
-    events = evts[(evts[:, 2] >= start) & (evts[:, 2] < start + EVENT_WINDOW_MS)]
+    events = evts if window_ms is None else evts[
+        (evts[:, 2] >= start) & (evts[:, 2] < start + window_ms)
+    ]
     if events[:, 2].max() <= start:
         raise ValueError("The method requires at least two distinct event times")
     return events
@@ -46,11 +50,12 @@ def constGS(evts, H=256, W=256):
     vor = result.vorticity
     return u, v, div, vor
 
-def inr_vg(evts, H=256, W=256):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_voxel_grid(evts, TEMPORAL_NUM_BINS, H=H, W=W)
+def inr_vg(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
+           num_bins=TEMPORAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
     # vg = (vg*255/(torch.max(vg)+1e-8))
-    dt = (dts/(TEMPORAL_NUM_BINS - 1)).item()
+    dt = (dts/(num_bins - 1)).item()
         
     blur = torch.nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
     vg = vg.unsqueeze(1)     # B×1×W×H
@@ -70,10 +75,11 @@ def inr_vg(evts, H=256, W=256):
     vor = dvx_dx - dvy_dy
     return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
 
-def inr_est(evts, H=256, W=256):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_est(evts, TEMPORAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(TEMPORAL_NUM_BINS - 1)).item()
+def inr_est(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
+            num_bins=TEMPORAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_est(evts, num_bins, H=H, W=W)
+    dt = (dts/(num_bins - 1)).item()
 
     blur = torch.nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
     vg = vg.unsqueeze(1)     # B×1×W×H
@@ -250,26 +256,29 @@ def _run_ilk_from_voxel_grid(vg, dt, H, W, profile="auto", radius=None, num_warp
     return u_mean, v_mean, div, vor
 
 
-def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None, *,
+          event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
+    dt = (dts/(num_bins - 1)).item()
     vg = _normalize_voxel_grid(vg)
     return _run_farneback_from_voxel_grid(vg, dt, H, W, profile=profile, resize_factor=resize_factor)
 
-def of_est(evts, H=256, W=256, profile="auto", resize_factor=None):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+def of_est(evts, H=256, W=256, profile="auto", resize_factor=None, *,
+           event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_est(evts, num_bins, H=H, W=W)
+    dt = (dts/(num_bins - 1)).item()
     vg = _normalize_voxel_grid(vg)
     return _run_farneback_from_voxel_grid(vg, dt, H, W, profile=profile, resize_factor=resize_factor)
 
 
 def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
-           profile="auto", resize_factor=None, blur_ksize="auto"):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_voxel_grid(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+           profile="auto", resize_factor=None, blur_ksize="auto", *,
+           event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
+    dt = (dts/(num_bins - 1)).item()
     vg = _normalize_voxel_grid(vg)
     return _run_ilk_from_voxel_grid(
         vg, dt, H, W,
@@ -281,10 +290,11 @@ def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
     )
 
 def ilk_est(evts, radius=None, num_warp=None, H=256, W=256,
-            profile="auto", resize_factor=None, blur_ksize="auto"):
-    evts = _select_event_window(evts)
-    vg, dts = events_to_est(evts, CLASSICAL_NUM_BINS, H=H, W=W)
-    dt = (dts/(CLASSICAL_NUM_BINS - 1)).item()
+            profile="auto", resize_factor=None, blur_ksize="auto", *,
+            event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    evts = _select_event_window(evts, event_window_ms)
+    vg, dts = events_to_est(evts, num_bins, H=H, W=W)
+    dt = (dts/(num_bins - 1)).item()
     vg = _normalize_voxel_grid(vg)
     return _run_ilk_from_voxel_grid(
         vg, dt, H, W,

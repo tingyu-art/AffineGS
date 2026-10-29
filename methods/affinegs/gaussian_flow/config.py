@@ -59,7 +59,7 @@ class GaussianFlowConfig:
     phase: List[int] = field(default_factory=lambda: [50, 200, 250])   # 训练阶段分界点 [phase0_end, phase1_end, phase2_end]
 
     # ── 优化器 lr ────────────────────────────────────────────────────────────
-    lr_mu: float = 3.0              # 均值参数学习率
+    lr_mu: float = 3.0              # 均值参数初始学习率；线性衰减到 20% （默认 3.0 → 0.6）
     lr_j: Optional[float] = None   # Jacobian lr；None = 自动检测（湍流→0.05，其他→0.001）
 
     # ── 损失权重 ─────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ class GaussianFlowConfig:
     max_split: int = 50
     prune_opacity_thresh: float = 0.1
     max_anisotropy: float = 3.0
-    residual_block_size: int = 8
+    residual_block_size: int = 16
     residual_min_events_per_block: int = 0
     clone_residual_quantile: float = 0.3
     clone_coverage_quantile: float = 0.3
