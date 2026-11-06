@@ -27,4 +27,5 @@ build/
 /data/*.hdf5
 /manuscript_revised.pdf
 /EXP2_*.pdf
-/experiments/IWE_vote/*.png
+/experiments/IWE_vote/
+/experiments/legacy/

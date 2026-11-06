@@ -59,18 +59,15 @@ warmed up outside benchmark timing.
 * [EXP3.ipynb](experiments/EXP3.ipynb): real-data flow estimation and visualization; saves velocity fields for appendix evaluation.
 * [EXP_APPENDIX.ipynb](experiments/EXP_APPENDIX.ipynb): density-control ablation and FWL/RSAT evaluation using saved EXP3 velocity fields.
 * [EXP_OTHER.ipynb](experiments/EXP_OTHER.ipynb): runtime, training-memory and Gaussian-count experiments.
-* [IWE_vote/tu.py](experiments/IWE_vote/tu.py): event-warping illustration; saves `discrete_IWE_vote.pdf` beside the script.
 
 
-## Saved results and notebook previews
+## Saved experiment outputs
 
 All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Saved outputs are preserved except for the explicitly requested EXP1 paired-axis alignment and EXP_OTHER rerun. Invalid progress-widget output entries are removed; saved figures, tables and other text outputs are retained.
 
-[Selected result files and their provenance](results/2026-11-06/README.md) include the Figure 5–10 curves and panels, Table 1/2 values, density-control results and Table C1. CSV/JSON files accompany the figures. Raw recordings, full real-data velocity arrays, build products and local audit bundles are not part of this selected result snapshot.
+Experiments save their figures, metrics and run records directly under `output/`. This directory is local and ignored by Git, except for its placeholder. GitHub displays the saved outputs embedded in the experiment notebooks; there is no separately curated `results/` directory.
 
 EXP2, EXP3 and EXP_APPENDIX retain their original saved outputs. EXP1 retains its original data and styles; only the user-requested paired RMSE/AEE axis limits, scales and ticks were aligned for the Jacobian, frozen-geometry and density plots. Training was not rerun for that display change. Some notebook outputs predate the separately saved result files; those files retain their own run provenance. EXP_OTHER contains the actual output of the latest user-requested full execution (20261106T142433). Other CUDA processes were present, so its single-pass times are not an isolated performance benchmark.
-
-![Real-data comparison](results/2026-11-06/figures/Fig_10_RealData_AllMethods.png)
 
 ## Real-data result provenance
 
