@@ -64,7 +64,7 @@ warmed up outside benchmark timing.
 
 ## Saved results and notebook previews
 
-All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Saved outputs are preserved except for the explicitly requested EXP1 paired-axis alignment and EXP_OTHER rerun.
+All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Saved outputs are preserved except for the explicitly requested EXP1 paired-axis alignment and EXP_OTHER rerun. Invalid progress-widget output entries are removed; saved figures, tables and other text outputs are retained.
 
 [Selected result files and their provenance](results/2026-11-06/README.md) include the Figure 5–10 curves and panels, Table 1/2 values, density-control results and Table C1. CSV/JSON files accompany the figures. Raw recordings, full real-data velocity arrays, build products and local audit bundles are not part of this selected result snapshot.
 
