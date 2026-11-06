@@ -68,7 +68,7 @@ All five main experiment notebooks retain inline figures or HTML tables for brow
 
 [Selected result files and their provenance](results/2026-11-06/README.md) include the Figure 5–10 curves and panels, Table 1/2 values, density-control results and Table C1. CSV/JSON files accompany the figures. Raw recordings, full real-data velocity arrays, build products and local audit bundles are not part of this selected result snapshot.
 
-EXP1 and appendix plots were refreshed from existing saved data without rerunning training. EXP2 previews identify their saved run explicitly; they should not be interpreted as a fresh run of every current source file. EXP3 and Table C1 use the same verified saved fields. EXP_OTHER retains the actual output of a fresh notebook execution; its single-pass timing is not an isolated repeated performance benchmark.
+EXP1 and appendix plots were refreshed from existing saved data without rerunning training. EXP2 previews identify their saved run explicitly; they should not be interpreted as a fresh run of every current source file. EXP3 and Table C1 use the same verified saved fields. EXP_OTHER displays its previously saved verified Table 3 and count results without requiring a new execution. Their source is stated in the notebook; the newer shared-device run is archived separately and is not an isolated performance benchmark.
 
 ![Real-data comparison](results/2026-11-06/figures/Fig_10_RealData_AllMethods.png)
 

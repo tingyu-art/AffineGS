@@ -3,8 +3,8 @@
   "snapshot": "2026-11-06",
   "files": {
     "README.md": {
-      "sha256": "4b268e7837503ba25f07eee17b5227f85b74e02101738249fcadbe52c1852757",
-      "size": 4750
+      "sha256": "611d6a93a4dbddeeb26b1c382823b4d374041c1ea94a3e0042956463f2088dee",
+      "size": 4873
     },
     "config/Synthetic_Defaults_Recorded.json": {
       "sha256": "d717d39445f09238a28ef3c4ddc9b01eae411a468de14cde26b44d8a00fe49ea",
@@ -415,6 +415,10 @@
       "size": 6810
     },
     "provenance/EXP_OTHER_run_metadata.json": {
+      "sha256": "15838090afcd0d97f18f3a0c70805423f4e58fffdfeb3afbdd651a12554eec81",
+      "size": 691
+    },
+    "provenance/EXP_OTHER_shared_GPU_run_metadata.json": {
       "sha256": "3a0e9be19f5e221484714b7d722131d592c653afca1c65323191f85c83c86108",
       "size": 8331
     },
@@ -467,28 +471,28 @@
       "size": 357666
     },
     "tables/Gaussian_Count_Real.csv": {
-      "sha256": "223ae5f717a20d9e73ba9baf128888a936bfd3c39aceca5e7213f0a0245c55f2",
+      "sha256": "fd2c81eca5b8f475c2bb34c01277a0a57b3c2881c5e4c00042dc84a237a27feb",
       "size": 291
     },
     "tables/Gaussian_Count_Real.json": {
-      "sha256": "2275e28c064a05d7d44512af7f5c3a95e7f8604e38173acdff1825f27d6e333b",
-      "size": 846
+      "sha256": "13784bb55dca798f5320d42dd73fb089df22454db678f0060a0b1a290333ff89",
+      "size": 886
     },
     "tables/Gaussian_Count_Summary.csv": {
-      "sha256": "b6ce6f56093369031b5191393eb1ef2c476e6a2a3a3b9ff8063bb3b4a93908bc",
+      "sha256": "80e642f75054d5f141d1b6c3549040d84947de8ed81b8ef058bcb96288407cec",
       "size": 104
     },
     "tables/Gaussian_Count_Summary.json": {
-      "sha256": "ee63ba5781827a6b105bca72363d86c06228994211d8ce4cd5a986e831a7701b",
-      "size": 311
+      "sha256": "593e40248ffaeecd3dd893c22899fc96d0c019c79b276b4742518afd1f716dbe",
+      "size": 331
     },
     "tables/Gaussian_Count_Synthetic.csv": {
-      "sha256": "ef96dd771d91c2e32ea3f1cb44c9e3b1103fe6f60ef95451b1bcdbd6800abcaa",
+      "sha256": "991c2f632920b0222fcd3d923340c60d0807f43e77df0896047369f9c2658c15",
       "size": 326
     },
     "tables/Gaussian_Count_Synthetic.json": {
-      "sha256": "3e1a64f79d32f757df16aade9a3c35d3930bcf9caf3dc51be9873c7c9fc95f95",
-      "size": 1181
+      "sha256": "7258f3861e034b53f997b4de40b821f98ac7d4918e76af4e9a57f79f0445bd1c",
+      "size": 1241
     },
     "tables/Table_01_SAVED_RUN_original.csv": {
       "sha256": "9acc3b97859fd2b1ec18d7f633257df96bbe8175c6f68758f435997e10948b42",
@@ -507,20 +511,20 @@
       "size": 910
     },
     "tables/Table_03_Efficiency.csv": {
-      "sha256": "384eb80f98094cd29dc0b0f1e456e418a7d6d061eb64e08e84449b88a5ca4280",
-      "size": 1044
+      "sha256": "c6360c78cbc6e947486b87a813bc6c8e0a678369baa0856433ad8be54990382c",
+      "size": 935
     },
     "tables/Table_03_Efficiency.json": {
-      "sha256": "bb4a736576b132f3a87c2e4b4321a5a8bd3dafe1d3a7396811a082ee9ccae3dd",
-      "size": 2613
+      "sha256": "78275b24d4ff914c303458877549819a598a9a24b9a8b695f05336191b43ebaf",
+      "size": 2541
     },
     "tables/Table_03_Paper.csv": {
-      "sha256": "b69978ad6d302792c3a1a3e74317ff2f62f9812fa2fa6215876d486787e1ac9d",
-      "size": 458
+      "sha256": "1220fa53aba26b4567cfe2f364cbc82c51f3744f4ffbc6c0e57a759d11b99af8",
+      "size": 423
     },
     "tables/Table_03_Paper.json": {
-      "sha256": "c44c788dea6a83181183d158eb8c7fc3a152aafd4179696bd7272ce8cfd64f13",
-      "size": 1184
+      "sha256": "892f17b170fb1b38a3748f05682421347bc8066100bd15e113c3dd9cf4fdfc04",
+      "size": 1145
     },
     "tables/Table_C1_RealData.csv": {
       "sha256": "5d4b0db52d31a943d6cb0506c1f9b785417b5fd8aab201037b0499fb0b7a5a3e",
@@ -557,6 +561,46 @@
     "tables/Tables_01_02_vs_Manuscript_SAVED_RUN.pdf": {
       "sha256": "f24bb172d7e199378e3982e5db883c0aa68ee5ee24929aca36920d2f7c18d114",
       "size": 212515
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Real.csv": {
+      "sha256": "223ae5f717a20d9e73ba9baf128888a936bfd3c39aceca5e7213f0a0245c55f2",
+      "size": 291
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Real.json": {
+      "sha256": "2275e28c064a05d7d44512af7f5c3a95e7f8604e38173acdff1825f27d6e333b",
+      "size": 846
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Summary.csv": {
+      "sha256": "b6ce6f56093369031b5191393eb1ef2c476e6a2a3a3b9ff8063bb3b4a93908bc",
+      "size": 104
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Summary.json": {
+      "sha256": "ee63ba5781827a6b105bca72363d86c06228994211d8ce4cd5a986e831a7701b",
+      "size": 311
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Synthetic.csv": {
+      "sha256": "ef96dd771d91c2e32ea3f1cb44c9e3b1103fe6f60ef95451b1bcdbd6800abcaa",
+      "size": 326
+    },
+    "tables/shared_gpu_run_20261106/Gaussian_Count_Synthetic.json": {
+      "sha256": "3e1a64f79d32f757df16aade9a3c35d3930bcf9caf3dc51be9873c7c9fc95f95",
+      "size": 1181
+    },
+    "tables/shared_gpu_run_20261106/Table_03_Efficiency.csv": {
+      "sha256": "384eb80f98094cd29dc0b0f1e456e418a7d6d061eb64e08e84449b88a5ca4280",
+      "size": 1044
+    },
+    "tables/shared_gpu_run_20261106/Table_03_Efficiency.json": {
+      "sha256": "bb4a736576b132f3a87c2e4b4321a5a8bd3dafe1d3a7396811a082ee9ccae3dd",
+      "size": 2613
+    },
+    "tables/shared_gpu_run_20261106/Table_03_Paper.csv": {
+      "sha256": "b69978ad6d302792c3a1a3e74317ff2f62f9812fa2fa6215876d486787e1ac9d",
+      "size": 458
+    },
+    "tables/shared_gpu_run_20261106/Table_03_Paper.json": {
+      "sha256": "c44c788dea6a83181183d158eb8c7fc3a152aafd4179696bd7272ce8cfd64f13",
+      "size": 1184
     }
   }
 }
