@@ -73,3 +73,16 @@ class GaussianRenderFunction(torch.autograd.Function):
 def gaussian_render_cuda(mu, sigma_inv, opacity, vel, J, cell_ptr, cell_indices, H, W, tile_size, grid_w):
     return GaussianRenderFunction.apply(mu, sigma_inv, opacity, vel, J, cell_ptr, cell_indices,
                                         H, W, tile_size, grid_w)
+
+
+def gaussian_render_derivatives_cuda(mu, sigma_inv, opacity, vel, J, cell_ptr, cell_indices,
+                                     H, W, tile_size, grid_w):
+    """Inference-only nine accumulator maps, including analytic spatial derivatives."""
+    if torch.is_grad_enabled():
+        raise RuntimeError("Analytic CUDA rendering requires torch.no_grad()")
+    return _load_ext().derivatives(
+        mu.contiguous().float(), sigma_inv.contiguous().float(), opacity.contiguous().float(),
+        vel.contiguous().float(), J.contiguous().float(),
+        cell_ptr.contiguous().long(), cell_indices.contiguous().long(),
+        int(H), int(W), int(tile_size), int(grid_w),
+    )

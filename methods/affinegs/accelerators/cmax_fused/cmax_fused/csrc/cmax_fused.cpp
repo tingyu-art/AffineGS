@@ -39,6 +39,8 @@ torch::Tensor fused_warp_iwe_forward(
     TORCH_CHECK(events.dim() == 2 && events.size(1) == 4, "events must be [N,4]");
     TORCH_CHECK(flow.dim() == 3 && flow.size(0) == 2, "flow must be [2,H,W]");
     TORCH_CHECK(flow.size(1) == H && flow.size(2) == W, "flow shape mismatch with H,W");
+    TORCH_CHECK(events.device() == flow.device(), "events and flow must share a CUDA device");
+    TORCH_CHECK(H > 0 && W > 0, "image dimensions must be positive");
     TORCH_CHECK(kernel_size >= 1 && (kernel_size % 2 == 1), "kernel_size must be odd");
     TORCH_CHECK(sigma > 0.0, "sigma must be > 0");
 
@@ -63,6 +65,10 @@ torch::Tensor fused_warp_iwe_backward(
     TORCH_CHECK(events.dim() == 2 && events.size(1) == 4, "events must be [N,4]");
     TORCH_CHECK(flow.dim() == 3 && flow.size(0) == 2, "flow must be [2,H,W]");
     TORCH_CHECK(flow.size(1) == H && flow.size(2) == W, "flow shape mismatch with H,W");
+    TORCH_CHECK(grad_iwe.size(1) == H && grad_iwe.size(2) == W, "grad_iwe shape mismatch with H,W");
+    TORCH_CHECK(events.device() == flow.device() && grad_iwe.device() == flow.device(),
+                "events, flow and grad_iwe must share a CUDA device");
+    TORCH_CHECK(H > 0 && W > 0, "image dimensions must be positive");
     TORCH_CHECK(kernel_size >= 1 && (kernel_size % 2 == 1), "kernel_size must be odd");
     TORCH_CHECK(sigma > 0.0, "sigma must be > 0");
 

@@ -96,7 +96,10 @@ def append_gaussians(model, optimizer, extension_dict):
         old_param = getattr(model, attr_name)
         if old_param is None:
             continue
-        new_param = nn.Parameter(torch.cat([old_param, new_data], dim=0))
+        combined = torch.cat([old_param, new_data], dim=0)
+        if name == 'scale':
+            combined = combined.clamp(min=model.log_scale_min, max=model.log_scale_max)
+        new_param = nn.Parameter(combined)
         setattr(model, attr_name, new_param)
         replace_tensor_to_optimizer(optimizer, name, new_param)
     model.num_gaussians = model.mu.shape[0]
@@ -292,12 +295,13 @@ def adaptive_density_control(
     with torch.no_grad():
         mu = model.mu.detach()
         opacity = torch.sigmoid(model.opacity_logit).squeeze(-1)
-        scales = torch.exp(model.log_scale)
+        scales = model.get_scales()
         max_scale = scales.max(dim=1).values
         min_scale = scales.min(dim=1).values.clamp(min=1e-6)
         anisotropy = max_scale / min_scale
         finite_mask = (
             torch.isfinite(mu).all(dim=1) &
+            torch.isfinite(model.log_scale).all(dim=1) &
             torch.isfinite(scales).all(dim=1) &
             torch.isfinite(opacity)
         )
@@ -330,7 +334,7 @@ def adaptive_density_control(
 
         mask_nonfinite = ~finite_mask
         mask_geometry = (
-            (max_scale < 0.5) |
+            (max_scale < 1.0) |
             (max_scale > H / 6) |
             (anisotropy > max_anisotropy) |
             (mu[:, 0] < -margin) | (mu[:, 0] > H + margin) |
@@ -506,7 +510,9 @@ def adaptive_density_control(
                 r = model.rotation.data[split_indices].squeeze(-1)
                 axis = torch.stack([torch.cos(r), torch.sin(r)], dim=-1)
 
-                child_log_scale = model.log_scale.data[split_indices].clone() + float(np.log(split_scale_shrink))
+                child_log_scale = (
+                    model.clamped_log_scale()[split_indices].clone() + float(np.log(split_scale_shrink))
+                ).clamp(min=model.log_scale_min, max=model.log_scale_max)
                 child_scale = torch.exp(child_log_scale)
                 child_major = child_scale.max(dim=1, keepdim=True).values
 

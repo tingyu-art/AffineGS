@@ -17,3 +17,14 @@ build/
 *.egg-info/
 *.so
 /tests/
+
+# Local-only EXP2 dataset sweep extracted from experiments/EXP2.ipynb.
+/experiments/EXP2_DATASETS_LOCAL.py
+
+# Local research drafts and large untracked recordings (tracked historical inputs are unaffected).
+/experiments/spacetime_gaussian/
+/data/*.h5
+/data/*.hdf5
+/manuscript_revised.pdf
+/EXP2_*.pdf
+/experiments/IWE_vote/*.png

@@ -193,7 +193,12 @@ def train_func(model, xs, vg, dt=1.0, num_epochs=1000, learning_rate=0.001,
         
         # forward
         u, v = model(xs,dt=dts[epoch])
-        _, _, du_dx, _, _, dv_dx = model.forward_manual_grad(xs_g, dt=dts[epoch])
+        _, _, du_dx, du_dy, dv_dx, dv_dy = model.forward_manual_grad(xs_g, dt=dts[epoch])
+        # The upstream four-output API returned both velocity channels for
+        # each coordinate derivative. Reassemble those tensors from our
+        # six-output API to retain all four terms and the original mean.
+        grad_x = torch.cat((du_dx, dv_dx), dim=1)
+        grad_y = torch.cat((du_dy, dv_dy), dim=1)
 
         # Training the data
         loss_data = 0
@@ -207,8 +212,10 @@ def train_func(model, xs, vg, dt=1.0, num_epochs=1000, learning_rate=0.001,
             w2 = warping(vg2, x, y, -dts[epoch]*b*v/2, -dts[epoch]*b*u/2, width=W, height=H)
             loss_data = loss_data+ smooth_l1_loss(w1 - w2, torch.zeros_like(w1))        
         
-        loss_smooth = mse_loss(du_dx, torch.zeros_like(du_dx)) + \
-                     mse_loss(dv_dx, torch.zeros_like(dv_dx))
+        # Each MSE averages over two channels, matching the upstream loss:
+        # 0.5 * mean(du_dx**2 + du_dy**2 + dv_dx**2 + dv_dy**2).
+        loss_smooth = mse_loss(grad_x, torch.zeros_like(grad_x)) + \
+                     mse_loss(grad_y, torch.zeros_like(grad_y))
         
         # # 总损失
         # loss_smooth = torch.zeros_like(loss_data)

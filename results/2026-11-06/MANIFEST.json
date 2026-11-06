@@ -1,0 +1,562 @@
+{
+  "schema_version": 1,
+  "snapshot": "2026-11-06",
+  "files": {
+    "README.md": {
+      "sha256": "4b268e7837503ba25f07eee17b5227f85b74e02101738249fcadbe52c1852757",
+      "size": 4750
+    },
+    "config/Synthetic_Defaults_Recorded.json": {
+      "sha256": "d717d39445f09238a28ef3c4ddc9b01eae411a468de14cde26b44d8a00fe49ea",
+      "size": 1115
+    },
+    "config/ebiv_AffineGS_Recorded.json": {
+      "sha256": "27847cf2251346729b6b29369f2ba6f64a04d216e86c0e2bfa78f28509057102",
+      "size": 1135
+    },
+    "config/ebiv_ConstGS_Recorded.json": {
+      "sha256": "76384ad8e3af1a7215c936e5201f689704cace1f05367d6bd171d665984b026f",
+      "size": 1136
+    },
+    "config/water_AffineGS_Recorded.json": {
+      "sha256": "27847cf2251346729b6b29369f2ba6f64a04d216e86c0e2bfa78f28509057102",
+      "size": 1135
+    },
+    "config/water_ConstGS_Recorded.json": {
+      "sha256": "76384ad8e3af1a7215c936e5201f689704cace1f05367d6bd171d665984b026f",
+      "size": 1136
+    },
+    "data/EXP2/EXP2_DNS_turbulence_metrics.json": {
+      "sha256": "e4508b64262c8a3d01c41f9bdf6500f048e770d408c3281fcb739f022cfd8567",
+      "size": 2706
+    },
+    "data/EXP2/EXP2_DNS_turbulence_vorticity.npz": {
+      "sha256": "91ec797b057100fa89623db9d6ed7cd2fb2b49ecf7870110abcfad759291842b",
+      "size": 1694410
+    },
+    "data/EXP2/EXP2_JHTDB_isotropic_metrics.json": {
+      "sha256": "c566725d1adec18016290b7544401fca1a08f68263dcdf87c8ece15f99661ae2",
+      "size": 2708
+    },
+    "data/EXP2/EXP2_JHTDB_isotropic_vorticity.npz": {
+      "sha256": "fffbf287e4cd9827068c8f1ae58a5dba553f3fa16d9516687c4159b5d288657c",
+      "size": 1689441
+    },
+    "data/EXP2/EXP2_SQG_metrics.json": {
+      "sha256": "3a4b90bcbe40388844a68f4927f5bd34d051fb4385c58bf08cf473a035cf3882",
+      "size": 2670
+    },
+    "data/EXP2/EXP2_SQG_vorticity.npz": {
+      "sha256": "7a6936425ece5827d6d8bffe4990f48c42f6c8aef9c2b760ae7d3947bcb84970",
+      "size": 1696054
+    },
+    "data/EXP2/EXP2_all_metrics.csv": {
+      "sha256": "3f3b01787ef085454e4e7bd30f0d699cd09af5a5371c61d82a693736c02c92e2",
+      "size": 2182
+    },
+    "data/EXP2/EXP2_original_results.json": {
+      "sha256": "8b2b883c0f0439739e36c02211c394518cf98e5ac80963761a057369c1da36fb",
+      "size": 11048
+    },
+    "data/Fig05/Fig05_original.json": {
+      "sha256": "225d6212df38e782ecee4f558fac9f4f8e34a4d3b3cb9c1408f24ceddbeb8c72",
+      "size": 3469
+    },
+    "data/Fig05/Fig05_values.csv": {
+      "sha256": "35e992299a4afe2d7506c3f8dc7bb6c304743411e115df78ce5751361dfe024b",
+      "size": 2313
+    },
+    "data/Fig06/Fig_06a_Lambda_original.json": {
+      "sha256": "6f78c19dd20f5a5395e60aab3e13dd3ebd6ec94689d4c824a759da369d5ba6f1",
+      "size": 113669
+    },
+    "data/Fig06/Fig_06a_Lambda_repeats.csv": {
+      "sha256": "d1f83d3630eef77b789e5937e90fb828d2cfe81b3b7233e032d4aae925f66c5b",
+      "size": 46421
+    },
+    "data/Fig06/Fig_06a_Lambda_summary.csv": {
+      "sha256": "5e882e1158d56c8c09d8bbb3211012ac79774cf4bb70860df1d3da6e04f5a2b0",
+      "size": 8460
+    },
+    "data/Fig06/Fig_06b_Rd_original.json": {
+      "sha256": "f3cb566f1128c771db7375e792b1335334bc040ee1f0b9895fc6517cc28fa635",
+      "size": 4010
+    },
+    "data/Fig06/Fig_06b_Rd_values.csv": {
+      "sha256": "e0d77377620b7de5a0f2154b4eaf0731654a9432639e56f3394399495b7fc60d",
+      "size": 1591
+    },
+    "data/Fig07/Fig07a_original.json": {
+      "sha256": "16ddb4512af3a1189e0979b0ce1346e8b0db348b05fb55af51e6002f28a735c8",
+      "size": 1771
+    },
+    "data/Fig07/Fig07a_values.csv": {
+      "sha256": "f641e0d5cf5c113220bf3a4f526883225f27303596823af88602cd89d38afa11",
+      "size": 949
+    },
+    "data/Fig07/Fig07b_original.json": {
+      "sha256": "21539a03495a276dc99dfc96aff113fdd6dbe69a708ad7f42e50604c2584b434",
+      "size": 1808
+    },
+    "data/Fig07/Fig07b_values.csv": {
+      "sha256": "409caddcde0e26d14b678920f4d109fd2aaa963d475e0ef857870841d1348e5b",
+      "size": 1028
+    },
+    "data/FigC1/Fig_C1_original_all_histories.json": {
+      "sha256": "4a873545f04fa6e1e4d770390510f82fe59fe2e59a168cb7011e3f3b54b201c3",
+      "size": 2210344
+    },
+    "data/FigC1/Fig_C1_summary.csv": {
+      "sha256": "e02d06f57505a329352348efc9e3be40ce6c32d916c86957769753e16d91476c",
+      "size": 1146
+    },
+    "data/FigC1/Fig_C1_training_runs.csv": {
+      "sha256": "242ed4b6f22232e9451f25c9a380d4a202042597f3227cb0335ec4b6be5fc3a6",
+      "size": 106701
+    },
+    "data/Supp01/Supp01_original.json": {
+      "sha256": "529104aa2fbb02d84aa6440805d9f6ce454b2b9dd2fc1cb8468ad6348be9a66a",
+      "size": 11195
+    },
+    "data/Supp01/Supp01_values.csv": {
+      "sha256": "a3a1a73a3c9224a293692c83df65b30f2213903ce9d145372ae20c816fcf454e",
+      "size": 3568
+    },
+    "data/TableC1/ebiv_FWL_original.json": {
+      "sha256": "c664f86c31539f578189f3e05c753e07bc5343f5f0754bd4fc5d37a14161c561",
+      "size": 8504
+    },
+    "data/TableC1/ebiv_RSAT_original.json": {
+      "sha256": "b762c7383c7932552db2ae6c1ba176df4558e7c2b971d4381eed1709ededa221",
+      "size": 8595
+    },
+    "data/TableC1/water_FWL_original.json": {
+      "sha256": "946c6b1c3b07e9579ec713c811569c0c7c5309f9ba74352bac374aa07dbb44ae",
+      "size": 8506
+    },
+    "data/TableC1/water_RSAT_original.json": {
+      "sha256": "a5dc63d9357dbf9535b20766b43014cc5e3fddea17614767e8b31954cd71815a",
+      "size": 8597
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_AffineGS.svg": {
+      "sha256": "ea2479600e78260a8f324bf3af9337cd95aa9dfa07f3d2c4147be9e348cb355b",
+      "size": 89779
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_ConstGS.svg": {
+      "sha256": "dc4476d3e992d425f4f8e664a7b90c914e1e1c28622e7dd0c2b349fb8a054197",
+      "size": 94042
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_ILK_VG.svg": {
+      "sha256": "ab7a2d71fa4634460baa1c08af10c7ce825e94210dde015db01ea7e90faeb219",
+      "size": 104861
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_INR_EST.svg": {
+      "sha256": "6af9df49f1c4ac9bb47e21bfd90e38d73701f11ba5355bec12ef03154334ac96",
+      "size": 103237
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_INR_VG.svg": {
+      "sha256": "f82c12e3b6f200f0509c7420a282edd22b827b7c60b5e122520cd8b53d9968c1",
+      "size": 104544
+    },
+    "figures/Fig08_panels/Fig_08_DNS_turbulence_OF_VG.svg": {
+      "sha256": "9692690e6e9f928126ea58550a1c739fde33d3697c02e7e36eb02d5fc62235e9",
+      "size": 109461
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_AffineGS.svg": {
+      "sha256": "37f2901f3ccdd3703de8493e88f43a289fa89802e67f1d8fb8febc69e432af6f",
+      "size": 100199
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_ConstGS.svg": {
+      "sha256": "1a78321e547221e924940dc4198a0fba7537484f320e1c92d9c18e54642717ec",
+      "size": 106948
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_ILK_VG.svg": {
+      "sha256": "97d2fd02a3b31faf29f0390e0533bc42fa947f74cbe4e0ab83f36caa2b8f37ca",
+      "size": 97610
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_INR_EST.svg": {
+      "sha256": "e81d5a783945ad33e7278df38dbe05008dd6ac67fc2f5ce6f504048124f5b1b9",
+      "size": 93789
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_INR_VG.svg": {
+      "sha256": "42d2f337a392ad2dd211eefe7aaf56eb89234c0b9a6b6e5ed94f6b32b1558035",
+      "size": 98745
+    },
+    "figures/Fig08_panels/Fig_08_JHTDB_isotropic_OF_VG.svg": {
+      "sha256": "27905fb270fdf607dbae61288257e99ff8f1593b15c8ef62cef1f8491d79ab0c",
+      "size": 102271
+    },
+    "figures/Fig08_panels/Fig_08_SQG_AffineGS.svg": {
+      "sha256": "262841894d256525f526c3d4a3895527e4ce3e03f4d95e691305c73f9279bb63",
+      "size": 106145
+    },
+    "figures/Fig08_panels/Fig_08_SQG_ConstGS.svg": {
+      "sha256": "bea87f45c8016b80c0fb5b108f48d0a795b17109e8bd264f033ae71fd04e1004",
+      "size": 109910
+    },
+    "figures/Fig08_panels/Fig_08_SQG_ILK_VG.svg": {
+      "sha256": "6bd44d867a2955b6303ee308e8026707fa87e634afdaf07939b1e92b9a6a84ca",
+      "size": 94254
+    },
+    "figures/Fig08_panels/Fig_08_SQG_INR_EST.svg": {
+      "sha256": "bba8c236c13c1bdab3ed8dc925861622e2648f8c484962eca8d43bad8565052c",
+      "size": 99212
+    },
+    "figures/Fig08_panels/Fig_08_SQG_INR_VG.svg": {
+      "sha256": "3fea550b5a3f26c62e0e9fedaf3eca6113a509868747d6440bd3097649d7a5a8",
+      "size": 95286
+    },
+    "figures/Fig08_panels/Fig_08_SQG_OF_VG.svg": {
+      "sha256": "d3c2cc8c6e62eb1b44ae1a873242793f0531ccc1be68832d3e52c1a2b3c7acee",
+      "size": 98615
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_AffineGS.pdf": {
+      "sha256": "9e0c92a4537a4f89e02e87e938d3000d54456398098dfb7b2a84983b80f0bed3",
+      "size": 59266
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_AffineGS.png": {
+      "sha256": "964ac0dabf727e4a6534b97c2636cdf64220e772a194b48011b3778c0887daf7",
+      "size": 235511
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_ConstGS.pdf": {
+      "sha256": "3a2bcd56b9ab739e316cc68cca506c86fcf903729e26b4ba910363dd9599e178",
+      "size": 56068
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_ConstGS.png": {
+      "sha256": "f3311a2228e87317ace53d8fed408d0e7c9d4679f0324a0e22d56825040b332b",
+      "size": 229211
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_ILK_VG.pdf": {
+      "sha256": "8dbef9b2c8ae780dde6d6b38e71d1946f9f52ecd952b0e51048328550f429cee",
+      "size": 68198
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_ILK_VG.png": {
+      "sha256": "31f729269ff7eef5f48a8cbb7d87cd21e8b22dbea0d2558b770f88b5921aa7a5",
+      "size": 242625
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_INR_EST.pdf": {
+      "sha256": "ddd4327477fe75b9eab04f4a5a2487e21c7714bd453046a9dc1fe7ea8d5b2672",
+      "size": 53081
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_INR_EST.png": {
+      "sha256": "4766ac7393db512e5a7479c3e0dacdfa65bfeee08e14fe50644e789386f73cff",
+      "size": 220480
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_INR_VG.pdf": {
+      "sha256": "95d0f10d6ee7df657fe0a48b93dff2df1a00a161cb1a9d9345c126733ab2d0f0",
+      "size": 52695
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_INR_VG.png": {
+      "sha256": "bdf467bda705924072fe44f5a2299ff08ae2927fed0b94b137f216c3f2151021",
+      "size": 220506
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_OF_VG.pdf": {
+      "sha256": "e1ae93fa18fabbb21592bc77f19cbeb48ef56bd2e55ef6c9ce3196bc10e9669c",
+      "size": 74533
+    },
+    "figures/Fig10_panels/Fig_10_ebiv_OF_VG.png": {
+      "sha256": "33873ddf05ace97ef92bf265273c4c68ee07f8916133ecd187f08df135b379c5",
+      "size": 263454
+    },
+    "figures/Fig10_panels/Fig_10_water_AffineGS.pdf": {
+      "sha256": "c89a8c5fa803159f54e3eaa0270e992fab05525552784ff75f790923cf9b9869",
+      "size": 77467
+    },
+    "figures/Fig10_panels/Fig_10_water_AffineGS.png": {
+      "sha256": "a41e77fbfa2c358ac66ce7e9fd145f8ee9e4224f98fcbdb6f0d06f36d72ce854",
+      "size": 309758
+    },
+    "figures/Fig10_panels/Fig_10_water_ConstGS.pdf": {
+      "sha256": "20be4fb002d6b6f30740566b33496e103d6ec4c2bfeaa8348690b78bf03555a6",
+      "size": 71769
+    },
+    "figures/Fig10_panels/Fig_10_water_ConstGS.png": {
+      "sha256": "d5241abf88c7a2b1e14d546ef32954e728d3c1f8e33a2a35b752c99182fc3b54",
+      "size": 296356
+    },
+    "figures/Fig10_panels/Fig_10_water_ILK_VG.pdf": {
+      "sha256": "a59c1a40c3dc86cfa270d3257559793577aeab6baf894ccadd69a54a61b32f5b",
+      "size": 82352
+    },
+    "figures/Fig10_panels/Fig_10_water_ILK_VG.png": {
+      "sha256": "d88ce9dd88a82261c4e3479116604f9c14366959159b7c897bd1a2106c784966",
+      "size": 306741
+    },
+    "figures/Fig10_panels/Fig_10_water_INR_EST.pdf": {
+      "sha256": "544318c60a91a307df46aa202ca113c2990ac18c1ec52c15040cf152f2e39dcd",
+      "size": 60123
+    },
+    "figures/Fig10_panels/Fig_10_water_INR_EST.png": {
+      "sha256": "71f775c4cd658125634cdbcb861aefbc3d03513c6e5c0656b4bdcbd9eeb8ff46",
+      "size": 268685
+    },
+    "figures/Fig10_panels/Fig_10_water_INR_VG.pdf": {
+      "sha256": "cde901b11df5a503488f0fff6e60cd1d57bf00021b959ee94a7cb15adc690c89",
+      "size": 68950
+    },
+    "figures/Fig10_panels/Fig_10_water_INR_VG.png": {
+      "sha256": "53611a85a8c5649b71b75347b6ee82652f6a10efca806e13fff2f00baf88bc74",
+      "size": 284204
+    },
+    "figures/Fig10_panels/Fig_10_water_OF_VG.pdf": {
+      "sha256": "d3b92c3ae1f853c07bb0bd4f33443b2f9284e69d2c8f02533f169af674f2e129",
+      "size": 84907
+    },
+    "figures/Fig10_panels/Fig_10_water_OF_VG.png": {
+      "sha256": "e2a4d2980eecbd402aef744087e6f8a7a1688b93517a23cb312e3d4b72d31fd0",
+      "size": 321452
+    },
+    "figures/Fig_05a_Jacobian_RMSE.pdf": {
+      "sha256": "956723830abc4bcaad102d58dca70426a9f5b4e2b57ea4e4d25cd9478cbc6ed4",
+      "size": 37537
+    },
+    "figures/Fig_05a_Jacobian_RMSE.png": {
+      "sha256": "02167af4bf46beabf29821a06482e1dc18174b132bed9963eef4aa8246830fa2",
+      "size": 190329
+    },
+    "figures/Fig_05b_Jacobian_AEE.pdf": {
+      "sha256": "2d2852e159aead61743c6b6847dd41bfe36bffc0a3a0cb80e9fb08f7fb91f4dc",
+      "size": 36448
+    },
+    "figures/Fig_05b_Jacobian_AEE.png": {
+      "sha256": "0bc9a9a9f2a7d7cefbe245720fc936c4ff5aee99cd1a05adec3c503bff24eacb",
+      "size": 188999
+    },
+    "figures/Fig_06a_Lambda_RMSE_full_range.pdf": {
+      "sha256": "0d8b3daaeeff1ef5bf35fe156ddcc00a0081550dc28dd4f3da81f3e5944770fb",
+      "size": 39135
+    },
+    "figures/Fig_06a_Lambda_RMSE_full_range.png": {
+      "sha256": "1520dca9e3ca2d485c70661e6f16b4ead91f014ba28053f668fe5ec4f2c9c8ad",
+      "size": 107286
+    },
+    "figures/Fig_06b_Rd_RMSE_full_range.pdf": {
+      "sha256": "1b84537bcddf3119c98668dda38653881c23c08e5328f7f056a1f1f32ed1dd5d",
+      "size": 38226
+    },
+    "figures/Fig_06b_Rd_RMSE_full_range.png": {
+      "sha256": "a58cf0b85ae67a7e5ecc35971ebb271b5aec060e76abdbfa827750665fad0244",
+      "size": 108268
+    },
+    "figures/Fig_07a_Density_AEE.pdf": {
+      "sha256": "1078ae4ad7ceee60179d626bbe4622117a8e4f4c9b3600eab7f0e1e5a3b6e702",
+      "size": 38283
+    },
+    "figures/Fig_07a_Density_AEE.png": {
+      "sha256": "73c049aabf7ec369b2f60b28baff23619d46be5e0df9e4fb8efc2d1305b71f73",
+      "size": 102636
+    },
+    "figures/Fig_07a_Density_RMSE.pdf": {
+      "sha256": "4de524326286d1391401b078f369478db9a22cf03f743e1fc1b2e5e21a3ce378",
+      "size": 38907
+    },
+    "figures/Fig_07a_Density_RMSE.png": {
+      "sha256": "fd63632dbc4d412aa6ae3df4a068ad144b52b7a031bc206db2471ad1d5f665d3",
+      "size": 112971
+    },
+    "figures/Fig_07b_Noise_AEE.pdf": {
+      "sha256": "73252b4b6d1122ef8660da084b9a28b5cb29f3afeb715f7badedb1b51966432e",
+      "size": 35369
+    },
+    "figures/Fig_07b_Noise_AEE.png": {
+      "sha256": "36428c2ff5e377173701a3201dcc382885eb04666c08155355b45bf7e5553c52",
+      "size": 89949
+    },
+    "figures/Fig_07b_Noise_RMSE.pdf": {
+      "sha256": "31684a4e8099c88e0a34d097abf256934d56173c47f88347355d09746ec4a179",
+      "size": 35996
+    },
+    "figures/Fig_07b_Noise_RMSE.png": {
+      "sha256": "23b85b7d3812974aa0f9ef5a91c85f76f0341ea5c6e296f3868acbb5616be086",
+      "size": 99755
+    },
+    "figures/Fig_08_Synthetic_Comparison_SAVED_RUN.pdf": {
+      "sha256": "40a0c9d55f3929404095463d905a1da6d083e9ac91e0eeb17ebd490430ac5469",
+      "size": 1354383
+    },
+    "figures/Fig_08_Synthetic_Comparison_SAVED_RUN.png": {
+      "sha256": "095c8f844db047580748a742cdd2fee7039cd98fce14a249ed53726582507356",
+      "size": 2501163
+    },
+    "figures/Fig_09_JHTDB_Vorticity_SAVED_RUN.pdf": {
+      "sha256": "6e68ebb12dbbb6dadde93f31b7931f724d6d32ec49038730fc9d9308813c73bb",
+      "size": 122040
+    },
+    "figures/Fig_09_JHTDB_Vorticity_SAVED_RUN.png": {
+      "sha256": "402d9e2cd6d9241ee58cc9dc3b3ea516d607be8cc26ffabd134b1be25f8415f6",
+      "size": 279561
+    },
+    "figures/Fig_10_RealData_AllMethods.pdf": {
+      "sha256": "95c5567bd54174fcd57474c1a05d053c0fa702b67208df394cb3591489f0d8f8",
+      "size": 815042
+    },
+    "figures/Fig_10_RealData_AllMethods.png": {
+      "sha256": "02e1260554b859fd66f36cd473d601bc3c2bce1590a2f6f9f12356a2fa4aeafb",
+      "size": 1418845
+    },
+    "figures/Fig_C1a_DensityControl_RMSE.pdf": {
+      "sha256": "6a44eeda52e0de8bc9b69f6b077895564812c535cc65b6aa2c695cc65cc07921",
+      "size": 33822
+    },
+    "figures/Fig_C1a_DensityControl_RMSE.png": {
+      "sha256": "8ad3416cd4f91428056e1dd7eaef1ab4c7ec608955ffbaef6fa5cacdcd0c088b",
+      "size": 64647
+    },
+    "figures/Fig_C1b_DensityControl_AEE.pdf": {
+      "sha256": "70a70ccae79e42799421418188f1de5dfbc9226c4ea31fc897e5a7e9b031441d",
+      "size": 33218
+    },
+    "figures/Fig_C1b_DensityControl_AEE.png": {
+      "sha256": "291d36f44ca3b0044d7047203696a8664d0f7d0d98215661666d0e0078652794",
+      "size": 61313
+    },
+    "provenance/EXP2_saved_run_manifest.json": {
+      "sha256": "88db795e75bdebed411af42c59abd08118929a4f06005c41f6c2fa38b00ac923",
+      "size": 6810
+    },
+    "provenance/EXP_OTHER_run_metadata.json": {
+      "sha256": "3a0e9be19f5e221484714b7d722131d592c653afca1c65323191f85c83c86108",
+      "size": 8331
+    },
+    "provenance/Fig10_ebiv_run_manifest.json": {
+      "sha256": "81937861cffc290791e7ee02ceb540c8afea734a855d0d7c7c57c627d6d24ed7",
+      "size": 15883
+    },
+    "provenance/Fig10_execution_verification.json": {
+      "sha256": "10c29cb7893bbe4111be8f6361f69b8d95426e9683ee6c028f33f5826af2e780",
+      "size": 7921
+    },
+    "provenance/Fig10_water_run_manifest.json": {
+      "sha256": "4e96730fcae95083b571f1dcb42e0dfc6c0a8eb6ac45afd41c943c2833b5a88a",
+      "size": 16241
+    },
+    "provenance/current_source_sha256.json": {
+      "sha256": "ca720ec5f1b11099e709895f4f9b8dc8539cd1178851c7c4cd24e9262216f039",
+      "size": 3854
+    },
+    "supplementary_figures/Supp_01a_FrozenGeometry_RMSE.pdf": {
+      "sha256": "6b478b95af5372970236a15cc889e1f9d35ac3cec87a79eb5b0a54e605d17bb9",
+      "size": 37546
+    },
+    "supplementary_figures/Supp_01a_FrozenGeometry_RMSE.png": {
+      "sha256": "f642f1364111f8db835e07eb8698da81113fa2da8002e8177cca4630e5245c33",
+      "size": 184486
+    },
+    "supplementary_figures/Supp_01b_FrozenGeometry_AEE.pdf": {
+      "sha256": "9f0ef905f5a733b71aab704474f9e745b2bc7c7e93f8855f84de4ef8173db6d8",
+      "size": 36428
+    },
+    "supplementary_figures/Supp_01b_FrozenGeometry_AEE.png": {
+      "sha256": "0a6cdf672731ee451437a6b534b0483eac9997a01e5c17841459e3a8b98209a1",
+      "size": 184011
+    },
+    "supplementary_figures/Supp_02_DNS_turbulence_Vorticity_SAVED_RUN.pdf": {
+      "sha256": "ecf192ba1cca4ecfce7cf82b6b21e2aa1aa05a348e8100b1fb9c879fe0ce54cd",
+      "size": 127790
+    },
+    "supplementary_figures/Supp_02_DNS_turbulence_Vorticity_SAVED_RUN.png": {
+      "sha256": "56785a54d868b7d2b8bd7546ace1ec2a027a248d6f6a5efb34340b5a076c435c",
+      "size": 297487
+    },
+    "supplementary_figures/Supp_02_SQG_Vorticity_SAVED_RUN.pdf": {
+      "sha256": "84b308a7a37ffb5320da3a13b97a7f349793c7cd890d40ea3296c9b8a42b1280",
+      "size": 152110
+    },
+    "supplementary_figures/Supp_02_SQG_Vorticity_SAVED_RUN.png": {
+      "sha256": "26ac51979b3add14f707786f3eacb9db97ece0aa81e913d891ae260caf70d200",
+      "size": 357666
+    },
+    "tables/Gaussian_Count_Real.csv": {
+      "sha256": "223ae5f717a20d9e73ba9baf128888a936bfd3c39aceca5e7213f0a0245c55f2",
+      "size": 291
+    },
+    "tables/Gaussian_Count_Real.json": {
+      "sha256": "2275e28c064a05d7d44512af7f5c3a95e7f8604e38173acdff1825f27d6e333b",
+      "size": 846
+    },
+    "tables/Gaussian_Count_Summary.csv": {
+      "sha256": "b6ce6f56093369031b5191393eb1ef2c476e6a2a3a3b9ff8063bb3b4a93908bc",
+      "size": 104
+    },
+    "tables/Gaussian_Count_Summary.json": {
+      "sha256": "ee63ba5781827a6b105bca72363d86c06228994211d8ce4cd5a986e831a7701b",
+      "size": 311
+    },
+    "tables/Gaussian_Count_Synthetic.csv": {
+      "sha256": "ef96dd771d91c2e32ea3f1cb44c9e3b1103fe6f60ef95451b1bcdbd6800abcaa",
+      "size": 326
+    },
+    "tables/Gaussian_Count_Synthetic.json": {
+      "sha256": "3e1a64f79d32f757df16aade9a3c35d3930bcf9caf3dc51be9873c7c9fc95f95",
+      "size": 1181
+    },
+    "tables/Table_01_SAVED_RUN_original.csv": {
+      "sha256": "9acc3b97859fd2b1ec18d7f633257df96bbe8175c6f68758f435997e10948b42",
+      "size": 407
+    },
+    "tables/Table_01_SAVED_RUN_values.csv": {
+      "sha256": "f4743a00a08b96097ad811624198c5e411ab78cc6263750f0824c80092fe63f2",
+      "size": 845
+    },
+    "tables/Table_02_SAVED_RUN_original.csv": {
+      "sha256": "927cef18bfa063cf60e79c2a6b287f34c89b0937be018720d0b875eea5316af6",
+      "size": 442
+    },
+    "tables/Table_02_SAVED_RUN_values.csv": {
+      "sha256": "c0f477abd0cab9d748bf8caecd9c46275f9e8078dbf942e8d25efaaa78f9f2f2",
+      "size": 910
+    },
+    "tables/Table_03_Efficiency.csv": {
+      "sha256": "384eb80f98094cd29dc0b0f1e456e418a7d6d061eb64e08e84449b88a5ca4280",
+      "size": 1044
+    },
+    "tables/Table_03_Efficiency.json": {
+      "sha256": "bb4a736576b132f3a87c2e4b4321a5a8bd3dafe1d3a7396811a082ee9ccae3dd",
+      "size": 2613
+    },
+    "tables/Table_03_Paper.csv": {
+      "sha256": "b69978ad6d302792c3a1a3e74317ff2f62f9812fa2fa6215876d486787e1ac9d",
+      "size": 458
+    },
+    "tables/Table_03_Paper.json": {
+      "sha256": "c44c788dea6a83181183d158eb8c7fc3a152aafd4179696bd7272ce8cfd64f13",
+      "size": 1184
+    },
+    "tables/Table_C1_RealData.csv": {
+      "sha256": "5d4b0db52d31a943d6cb0506c1f9b785417b5fd8aab201037b0499fb0b7a5a3e",
+      "size": 260
+    },
+    "tables/Table_C1_RealData.json": {
+      "sha256": "fcef05becc1bb9807dce1094a147f3dcaaba2b5facb1a3055af917261faf05f3",
+      "size": 19697
+    },
+    "tables/Table_C1_RealData.pdf": {
+      "sha256": "608e4aca9e83effc6c8ef162e2fb35eade932efbe0f968a129d61b6c845fe484",
+      "size": 45870
+    },
+    "tables/Table_C1_RealData.tex": {
+      "sha256": "12ff7540cf212fe2cba362372f08e18af3b8f051855c30e4b9c6206e111e5d7c",
+      "size": 934
+    },
+    "tables/Table_C1_ebiv_FWL.pdf": {
+      "sha256": "138942556d85076e39cb4522af34e134a4ad0a7241f3472250f2ea981704b4cc",
+      "size": 22387
+    },
+    "tables/Table_C1_ebiv_RSAT.pdf": {
+      "sha256": "456abe42d745d420c27efb579de4c4db18e6a7f4f2abb6bb09f1b1bb44eefcda",
+      "size": 22656
+    },
+    "tables/Table_C1_water_FWL.pdf": {
+      "sha256": "ebe41e665e697bafae8f8416371f6d8f0b1cd5937dda45a92fd554b6519452d7",
+      "size": 21271
+    },
+    "tables/Table_C1_water_RSAT.pdf": {
+      "sha256": "6e4858813a1ba535c6057023c516ead9c7df42ca5f2465d622406dd9f8d4b150",
+      "size": 22522
+    },
+    "tables/Tables_01_02_vs_Manuscript_SAVED_RUN.pdf": {
+      "sha256": "f24bb172d7e199378e3982e5db883c0aa68ee5ee24929aca36920d2f7c18d114",
+      "size": 212515
+    }
+  }
+}

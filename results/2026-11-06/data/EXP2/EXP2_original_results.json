@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "run_id": "2026-11-06T01:47:25+08:00",
+  "saved_at": "2026-11-06T01:48:02+08:00",
+  "source_sha256": {
+    "methods/method.py": "c21364baecea4d1d5ac760c6ca8f3dba0dee2c3257ea655a787f096e1b08368c",
+    "methods/affinegs/gaussian_flow/config.py": "cdde496095180119def764df17e3d0d22b6b0b6a3144fe7fa8949d8082b8a345",
+    "methods/affinegs/gaussian_flow/training.py": "7981b3646e307461a799289f52aec683bb6171872a21b9070eee8d5fce42454f",
+    "methods/affinegs/gaussian_flow/model.py": "12cd04cf569555457083090810c04e668116750e34f57cb5ddf2299fa62d47d5",
+    "generator/images.py": "adbd732b089295a2f28431e05a5a507ee8aba417d5970ac75e91f56939b8e30f",
+    "generator/flow.py": "f1937ed32f0d959adc9edbf67ccd61c3ea81cc1ceeb7099ce87b9c693ee46ce5",
+    "utils/metrics.py": "d7c5b4593a47e4673f18b5d41686f2dbb75d78cc40b3ff9611616667b5ee0c18"
+  },
+  "flow_input_sha256": {
+    "JHTDB-isotropic": "da9220c020dc07e8c635a4eb7116c123a6728e7218a31232a67ac2db1b8d54e1",
+    "DNS-turbulence": "f5df52adedd3fecec646f3ac602eba35895021be30c0c334ddf0ef461114cfb9",
+    "SQG": "1ca5575fe19be0f2d213ffa3b1901a502757dba98426258ce8d5e5e6c737a52d"
+  },
+  "records": {
+    "JHTDB-isotropic": {
+      "schema_version": 1,
+      "run_id": "2026-11-06T01:47:25+08:00",
+      "saved_at": "2026-11-06T01:47:37+08:00",
+      "flow_name": "JHTDB-isotropic",
+      "flow_input": "/media/newdisk/junjie/2dGS-representation/data/datasets/JHTDB_isotropic1024_hd_00001_flow.npz",
+      "flow_input_sha256": "da9220c020dc07e8c635a4eb7116c123a6728e7218a31232a67ac2db1b8d54e1",
+      "source_sha256": {
+        "methods/method.py": "c21364baecea4d1d5ac760c6ca8f3dba0dee2c3257ea655a787f096e1b08368c",
+        "methods/affinegs/gaussian_flow/config.py": "cdde496095180119def764df17e3d0d22b6b0b6a3144fe7fa8949d8082b8a345",
+        "methods/affinegs/gaussian_flow/training.py": "7981b3646e307461a799289f52aec683bb6171872a21b9070eee8d5fce42454f",
+        "methods/affinegs/gaussian_flow/model.py": "12cd04cf569555457083090810c04e668116750e34f57cb5ddf2299fa62d47d5",
+        "generator/images.py": "adbd732b089295a2f28431e05a5a507ee8aba417d5970ac75e91f56939b8e30f",
+        "generator/flow.py": "f1937ed32f0d959adc9edbf67ccd61c3ea81cc1ceeb7099ce87b9c693ee46ce5",
+        "utils/metrics.py": "d7c5b4593a47e4673f18b5d41686f2dbb75d78cc40b3ff9611616667b5ee0c18"
+      },
+      "config": {
+        "seed": 42,
+        "H": 256,
+        "W": 256,
+        "event_window_ms": 3.0,
+        "simulation_time_length_ms": 3.0,
+        "temporal_num_bins": 16,
+        "particle_spacing": 0.5,
+        "particle_density": 0.05,
+        "event_count": 224683
+      },
+      "methods": [
+        "ILK_VG",
+        "OF_VG",
+        "INR_EST",
+        "INR_VG",
+        "ConstGS",
+        "AffineGS"
+      ],
+      "metrics": {
+        "ILK_VG": {
+          "rmse": 0.6154447793960571,
+          "aee": 0.4599056541919708,
+          "mean|div|": 0.04046501964330673,
+          "RMSE_div": 0.05788019299507141,
+          "RMSE_ω": 0.146382138133049
+        },
+        "OF_VG": {
+          "rmse": 0.49480709433555603,
+          "aee": 0.3787793517112732,
+          "mean|div|": 0.03655799850821495,
+          "RMSE_div": 0.052622076123952866,
+          "RMSE_ω": 0.13519728183746338
+        },
+        "INR_EST": {
+          "rmse": 0.6110470294952393,
+          "aee": 0.4633272588253021,
+          "mean|div|": 0.01583154685795307,
+          "RMSE_div": 0.021553542464971542,
+          "RMSE_ω": 0.14844560623168945
+        },
+        "INR_VG": {
+          "rmse": 0.5627776384353638,
+          "aee": 0.42210882902145386,
+          "mean|div|": 0.017267080023884773,
+          "RMSE_div": 0.023623675107955933,
+          "RMSE_ω": 0.1411438286304474
+        },
+        "ConstGS": {
+          "rmse": 0.2842385172843933,
+          "aee": 0.22036026418209076,
+          "mean|div|": 0.013012159615755081,
+          "RMSE_div": 0.01646122895181179,
+          "RMSE_ω": 0.09186446666717529
+        },
+        "AffineGS": {
+          "rmse": 0.1616813689470291,
+          "aee": 0.1287188082933426,
+          "mean|div|": 0.006528433412313461,
+          "RMSE_div": 0.008325000293552876,
+          "RMSE_ω": 0.06625551730394363
+        }
+      },
+      "artifacts": {
+        "metrics": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/JHTDB_isotropic-metrics.json",
+        "vorticity": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/JHTDB_isotropic-vorticity.npz"
+      }
+    },
+    "DNS-turbulence": {
+      "schema_version": 1,
+      "run_id": "2026-11-06T01:47:25+08:00",
+      "saved_at": "2026-11-06T01:47:49+08:00",
+      "flow_name": "DNS-turbulence",
+      "flow_input": "/media/newdisk/junjie/2dGS-representation/data/datasets/DNS_turbulence_00001_flow.npz",
+      "flow_input_sha256": "f5df52adedd3fecec646f3ac602eba35895021be30c0c334ddf0ef461114cfb9",
+      "source_sha256": {
+        "methods/method.py": "c21364baecea4d1d5ac760c6ca8f3dba0dee2c3257ea655a787f096e1b08368c",
+        "methods/affinegs/gaussian_flow/config.py": "cdde496095180119def764df17e3d0d22b6b0b6a3144fe7fa8949d8082b8a345",
+        "methods/affinegs/gaussian_flow/training.py": "7981b3646e307461a799289f52aec683bb6171872a21b9070eee8d5fce42454f",
+        "methods/affinegs/gaussian_flow/model.py": "12cd04cf569555457083090810c04e668116750e34f57cb5ddf2299fa62d47d5",
+        "generator/images.py": "adbd732b089295a2f28431e05a5a507ee8aba417d5970ac75e91f56939b8e30f",
+        "generator/flow.py": "f1937ed32f0d959adc9edbf67ccd61c3ea81cc1ceeb7099ce87b9c693ee46ce5",
+        "utils/metrics.py": "d7c5b4593a47e4673f18b5d41686f2dbb75d78cc40b3ff9611616667b5ee0c18"
+      },
+      "config": {
+        "seed": 42,
+        "H": 256,
+        "W": 256,
+        "event_window_ms": 3.0,
+        "simulation_time_length_ms": 3.0,
+        "temporal_num_bins": 16,
+        "particle_spacing": 0.5,
+        "particle_density": 0.05,
+        "event_count": 108838
+      },
+      "methods": [
+        "ILK_VG",
+        "OF_VG",
+        "INR_EST",
+        "INR_VG",
+        "ConstGS",
+        "AffineGS"
+      ],
+      "metrics": {
+        "ILK_VG": {
+          "rmse": 0.4414435923099518,
+          "aee": 0.36399683356285095,
+          "mean|div|": 0.0391664057970047,
+          "RMSE_div": 0.05380930379033089,
+          "RMSE_ω": 0.09545780718326569
+        },
+        "OF_VG": {
+          "rmse": 0.34531283378601074,
+          "aee": 0.28656792640686035,
+          "mean|div|": 0.03480811417102814,
+          "RMSE_div": 0.04624830558896065,
+          "RMSE_ω": 0.08291520923376083
+        },
+        "INR_EST": {
+          "rmse": 0.3823019564151764,
+          "aee": 0.3284456133842468,
+          "mean|div|": 0.012258827686309814,
+          "RMSE_div": 0.015887916088104248,
+          "RMSE_ω": 0.08520054817199707
+        },
+        "INR_VG": {
+          "rmse": 0.3766976594924927,
+          "aee": 0.3186539113521576,
+          "mean|div|": 0.014077667146921158,
+          "RMSE_div": 0.018391285091638565,
+          "RMSE_ω": 0.08462852239608765
+        },
+        "ConstGS": {
+          "rmse": 0.17740754783153534,
+          "aee": 0.13538725674152374,
+          "mean|div|": 0.007444202434271574,
+          "RMSE_div": 0.009152770042419434,
+          "RMSE_ω": 0.051600925624370575
+        },
+        "AffineGS": {
+          "rmse": 0.12723886966705322,
+          "aee": 0.098920077085495,
+          "mean|div|": 0.005193034186959267,
+          "RMSE_div": 0.017376884818077087,
+          "RMSE_ω": 0.046057894825935364
+        }
+      },
+      "artifacts": {
+        "metrics": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/DNS_turbulence-metrics.json",
+        "vorticity": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/DNS_turbulence-vorticity.npz"
+      }
+    },
+    "SQG": {
+      "schema_version": 1,
+      "run_id": "2026-11-06T01:47:25+08:00",
+      "saved_at": "2026-11-06T01:48:02+08:00",
+      "flow_name": "SQG",
+      "flow_input": "/media/newdisk/junjie/2dGS-representation/data/datasets/SQG_00001_flow.npz",
+      "flow_input_sha256": "1ca5575fe19be0f2d213ffa3b1901a502757dba98426258ce8d5e5e6c737a52d",
+      "source_sha256": {
+        "methods/method.py": "c21364baecea4d1d5ac760c6ca8f3dba0dee2c3257ea655a787f096e1b08368c",
+        "methods/affinegs/gaussian_flow/config.py": "cdde496095180119def764df17e3d0d22b6b0b6a3144fe7fa8949d8082b8a345",
+        "methods/affinegs/gaussian_flow/training.py": "7981b3646e307461a799289f52aec683bb6171872a21b9070eee8d5fce42454f",
+        "methods/affinegs/gaussian_flow/model.py": "12cd04cf569555457083090810c04e668116750e34f57cb5ddf2299fa62d47d5",
+        "generator/images.py": "adbd732b089295a2f28431e05a5a507ee8aba417d5970ac75e91f56939b8e30f",
+        "generator/flow.py": "f1937ed32f0d959adc9edbf67ccd61c3ea81cc1ceeb7099ce87b9c693ee46ce5",
+        "utils/metrics.py": "d7c5b4593a47e4673f18b5d41686f2dbb75d78cc40b3ff9611616667b5ee0c18"
+      },
+      "config": {
+        "seed": 42,
+        "H": 256,
+        "W": 256,
+        "event_window_ms": 3.0,
+        "simulation_time_length_ms": 3.0,
+        "temporal_num_bins": 16,
+        "particle_spacing": 0.5,
+        "particle_density": 0.05,
+        "event_count": 184062
+      },
+      "methods": [
+        "ILK_VG",
+        "OF_VG",
+        "INR_EST",
+        "INR_VG",
+        "ConstGS",
+        "AffineGS"
+      ],
+      "metrics": {
+        "ILK_VG": {
+          "rmse": 0.6851918697357178,
+          "aee": 0.5328438878059387,
+          "mean|div|": 0.04890871047973633,
+          "RMSE_div": 0.06752525269985199,
+          "RMSE_ω": 0.1767057478427887
+        },
+        "OF_VG": {
+          "rmse": 0.7623614072799683,
+          "aee": 0.5057291984558105,
+          "mean|div|": 0.0494915135204792,
+          "RMSE_div": 0.07580007612705231,
+          "RMSE_ω": 0.16829413175582886
+        },
+        "INR_EST": {
+          "rmse": 0.5505529642105103,
+          "aee": 0.4472059905529022,
+          "mean|div|": 0.024835405871272087,
+          "RMSE_div": 0.03161481395363808,
+          "RMSE_ω": 0.1548236906528473
+        },
+        "INR_VG": {
+          "rmse": 0.6112625002861023,
+          "aee": 0.4935927987098694,
+          "mean|div|": 0.02439691126346588,
+          "RMSE_div": 0.03187458589673042,
+          "RMSE_ω": 0.1654798686504364
+        },
+        "ConstGS": {
+          "rmse": 0.3892163634300232,
+          "aee": 0.29587090015411377,
+          "mean|div|": 0.02126501128077507,
+          "RMSE_div": 0.02812797576189041,
+          "RMSE_ω": 0.11569920182228088
+        },
+        "AffineGS": {
+          "rmse": 0.2187742292881012,
+          "aee": 0.1676863133907318,
+          "mean|div|": 0.010873446241021156,
+          "RMSE_div": 0.019293159246444702,
+          "RMSE_ω": 0.08024101704359055
+        }
+      },
+      "artifacts": {
+        "metrics": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/SQG-metrics.json",
+        "vorticity": "/media/newdisk/junjie/2dGS-representation/output/EXP2/on_single_flow/SQG-vorticity.npz"
+      }
+    }
+  }
+}

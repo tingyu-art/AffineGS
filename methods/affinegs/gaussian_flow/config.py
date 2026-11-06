@@ -68,14 +68,14 @@ class GaussianFlowConfig:
     div_last: int = 500
 
     # ── log_scale clamp 范围 ─────────────────────────────────────────────────
-    log_scale_min: float = np.log(0.5)
+    log_scale_min: float = np.log(1.0)  # 最小允许尺度为 1 px；场景可显式设置更大下限
 
     # ── 密度控制参数 ─────────────────────────────────────────────────────────
     max_clone: int = 50
     max_split: int = 50
-    prune_opacity_thresh: float = 0.1
+    prune_opacity_thresh: float = 0.12
     max_anisotropy: float = 3.0
-    residual_block_size: int = 16
+    residual_block_size: int = 8
     residual_min_events_per_block: int = 0
     clone_residual_quantile: float = 0.3
     clone_coverage_quantile: float = 0.3
@@ -99,3 +99,7 @@ class GaussianFlowConfig:
     # ── 设备 ────────────────────────────────────────────────────────────────
     device: str = field(default_factory=lambda: 'cuda' if torch.cuda.is_available() else 'cpu')
     verbose: bool = False
+
+    # ── 最终渲染 ─────────────────────────────────────────────────────────────
+    render_tile_batch_size: int = 32  # 原分辨率 CUDA 融合推理；回退后端每批 tile 数；0=原路径
+    cuda_renderer_policy: str = "error"  # 初始化失败默认明确报错；"fallback"显式允许PyTorch后端

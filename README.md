@@ -12,18 +12,20 @@ The velocity field is modeled as a compact weighted superposition of localized a
 
 
 ## Install dependencies
-``` bash
-conda create -n affinegs python=3.10 -y
+```bash
+conda env create -f environment.yml
 conda activate affinegs
-
-# Install PyTorch. Please choose the CUDA version according to your local driver/toolkit.
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-
-# Common scientific and visualization packages.
-conda install numpy scipy pandas matplotlib seaborn scikit-image h5py tqdm notebook ipykernel -c conda-forge
-conda install opencv -c conda-forge
-pip install addict
+python -m ipykernel install --user --name affinegs --display-name "AffineGS"
 ```
+
+The tested package versions are pinned in [requirements-validated.txt](requirements-validated.txt).
+[environment-validated.json](environment-validated.json) records the local validation
+platform: Python 3.8.5, PyTorch 1.13.1+cu117 and RTX 3090. The extensions were built
+with CUDA toolkit 11.2 and GCC 9; the PyTorch CUDA runtime is 11.7. These are recorded
+versions, not a claim that other versions were tested. A compatible NVIDIA driver,
+CUDA toolkit, C++ compiler and `ninja` executable are required for CUDA extension
+compilation. The Jupyter/VS Code frontend may run separately; select the AffineGS
+kernel. Chinese audit PDFs additionally use XeLaTeX and Noto CJK fonts.
 
 The CUDA extensions are optional but recommended for faster AffineGS optimization and rendering. If a compatible CUDA toolkit and compiler are available, they can be built as follows:
 
@@ -37,14 +39,72 @@ python setup.py build_ext --inplace
 cd ../../../../
 ```
 
-If the extensions are not compiled successfully, the code will fall back to the PyTorch implementation, but the runtime may be slower.
+The Gaussian renderer is initialized before training. By default, import or JIT
+compilation failure raises an explicit error (`cuda_renderer_policy="error"`),
+so an efficiency run cannot silently switch backends. To permit the existing
+PyTorch renderer explicitly, use `GaussianFlowConfig(cuda_renderer_policy="fallback")`.
+This emits a warning on initialization failure; the selected backend is recorded
+as `result.model.render_backend` (`"cuda"` or `"torch"`). CPU execution uses the
+PyTorch renderer. Errors during kernel execution are propagated rather than
+triggering a mid-training fallback. CMax uses its existing PyTorch path if its
+prebuilt extension cannot be imported. Record both backends when reporting speed.
+
+After changing CMax CUDA sources, rerun its build command above and restart the
+notebook kernel to load the rebuilt binary. CUDA/JIT initialization should be
+warmed up outside benchmark timing.
 
 ## The experiments
 * [EXP1.ipynb](experiments/EXP1.ipynb): representation ablations, robustness and regularization sweeps, including paired sweeps with shared events and initialization.
 * [EXP2.ipynb](experiments/EXP2.ipynb): method comparison on synthetic flow fields and datasets.
 * [EXP3.ipynb](experiments/EXP3.ipynb): real-data flow estimation and visualization; saves velocity fields for appendix evaluation.
-* [APPENDIX.ipynb](experiments/APPENDIX.ipynb): density-control ablation and FWL/RSAT evaluation using saved EXP3 velocity fields.
+* [EXP_APPENDIX.ipynb](experiments/EXP_APPENDIX.ipynb): density-control ablation and FWL/RSAT evaluation using saved EXP3 velocity fields.
+* [EXP_OTHER.ipynb](experiments/EXP_OTHER.ipynb): runtime, training-memory and Gaussian-count experiments.
 * [IWE_vote/tu.py](experiments/IWE_vote/tu.py): event-warping illustration; saves `discrete_IWE_vote.pdf` beside the script.
+
+
+## Saved results and notebook previews
+
+All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Progress-widget references without saved widget state are omitted from the static view.
+
+[Selected result files and their provenance](results/2026-11-06/README.md) include the Figure 5–10 curves and panels, Table 1/2 values, density-control results and Table C1. CSV/JSON files accompany the figures. Raw recordings, full real-data velocity arrays, build products and local audit bundles are not part of this selected result snapshot.
+
+EXP1 and appendix plots were refreshed from existing saved data without rerunning training. EXP2 previews identify their saved run explicitly; they should not be interpreted as a fresh run of every current source file. EXP3 and Table C1 use the same verified saved fields. EXP_OTHER retains the actual output of a fresh notebook execution; its single-pass timing is not an isolated repeated performance benchmark.
+
+![Real-data comparison](results/2026-11-06/figures/Fig_10_RealData_AllMethods.png)
+
+## Real-data result provenance
+
+In EXP3, run the scene-selection cell once to create
+`output/EXP3/runs/<scene>/<run_id>/`. Keep that run selected while choosing the six
+methods with the existing notebook controls. Save the figure after each method.
+Each method's velocity file is immutable; to retrain it, rerun scene selection to
+start a new run. Figures are rendered from the saved velocity and their hashes
+are attached to the same manifest.
+
+The real-data section of EXP_APPENDIX reads a selected EXP3 run and does not
+retrain either Gaussian method. Set `REAL_RUN_DIR` to the directory used by the
+paper figure. Its default selects the newest run for that scene and rejects
+incomplete runs; it never fills gaps with legacy files. Event content, recording
+file, velocity and figure hashes are checked. FWL/RSAT JSON files contain those
+same flow hashes and use unique filenames under the run's `metrics/` directory.
+The old `output/EXP3/flow_fields/` files remain historical artifacts and are not
+silently promoted to verified results.
+
+## Event input contract
+
+Estimator events are tensors `[N, 4]` in `(row, column, time_ms, polarity)` order,
+with finite values, coordinates inside the image and at least two distinct times.
+GS checks its configuration before backend initialization; inactive density-control
+ablations such as `phase=[500, 200, 250]` for 300 iterations remain supported.
+
+Recorded-file loaders return float64 arrays in milliseconds so timestamps are
+not rounded at a large absolute offset before selecting an event window. For short integer timestamps that are already exactly representable, the existing float32 millisecond rounding is preserved for compatibility with current experiments. Select the desired
+window, then convert the selected events to the training dtype. For a long
+recording, `EventManager(..., timestamp_origin_us="start")` subtracts the earliest
+raw timestamp before converting units; window limits then refer to that origin.
+The numeric origin is available as `loader.source.resolved_timestamp_origin_us`.
+The default origin is zero, preserving absolute time semantics. Synthetic event
+simulation and optimization formulas are unchanged.
 
 
 ## Dataset

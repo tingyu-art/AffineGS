@@ -1,5 +1,7 @@
 #include <torch/extension.h>
 #include <ATen/cuda/CUDAContext.h>
+#include <c10/cuda/CUDAGuard.h>
+#include <c10/cuda/CUDAException.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <vector>
@@ -246,14 +248,16 @@ torch::Tensor fused_warp_iwe_forward_cuda(
     double sigma,
     int64_t kernel_size) {
 
+    const c10::cuda::CUDAGuard device_guard(events.device());
     const int N = int(events.size(0));
     auto iwe = torch::zeros({2, H, W}, events.options());
+    if (N == 0) return iwe;
 
     const int radius = int(kernel_size / 2);
     const float inv_scale = float(-1.0 / (2.0 * sigma * sigma));
 
     const int blocks = (N + THREADS - 1) / THREADS;
-    cudaStream_t stream = at::cuda::getDefaultCUDAStream().stream();
+    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
 
     fused_forward_kernel<<<blocks, THREADS, 0, stream>>>(
         events.data_ptr<float>(),
@@ -265,6 +269,7 @@ torch::Tensor fused_warp_iwe_forward_cuda(
         radius
     );
 
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
     return iwe;
 }
 
@@ -278,14 +283,16 @@ torch::Tensor fused_warp_iwe_backward_cuda(
     double sigma,
     int64_t kernel_size) {
 
+    const c10::cuda::CUDAGuard device_guard(events.device());
     const int N = int(events.size(0));
     auto grad_flow = torch::zeros_like(flow);
+    if (N == 0) return grad_flow;
 
     const int radius = int(kernel_size / 2);
     const float inv_scale = float(-1.0 / (2.0 * sigma * sigma));
 
     const int blocks = (N + THREADS - 1) / THREADS;
-    cudaStream_t stream = at::cuda::getDefaultCUDAStream().stream();
+    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
 
     fused_backward_kernel<<<blocks, THREADS, 0, stream>>>(
         grad_iwe.data_ptr<float>(),
@@ -298,5 +305,6 @@ torch::Tensor fused_warp_iwe_backward_cuda(
         radius
     );
 
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
     return grad_flow;
 }

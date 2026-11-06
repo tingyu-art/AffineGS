@@ -1,6 +1,9 @@
 #include <torch/extension.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <ATen/cuda/CUDAContext.h>
+#include <c10/cuda/CUDAGuard.h>
+#include <c10/cuda/CUDAException.h>
 #include <vector>
 
 namespace {
@@ -76,6 +79,7 @@ __device__ __forceinline__ GaussChunkBwd load_gauss_bwd(
     return g;
 }
 
+template <bool ComputeDerivatives>
 __global__ __launch_bounds__(kThreadsFwd, 1)
 void gaussian_render_forward_kernel_tiled_exact(
     const float* __restrict__ mu,
@@ -91,7 +95,8 @@ void gaussian_render_forward_kernel_tiled_exact(
     int grid_w,
     float* __restrict__ out_num_h,
     float* __restrict__ out_num_w,
-    float* __restrict__ out_den) {
+    float* __restrict__ out_den,
+    float* __restrict__ out_derivatives) {
 
     const int tile_id = blockIdx.x;
     const int pix_block_offset = blockIdx.y * blockDim.x;
@@ -136,6 +141,8 @@ void gaussian_render_forward_kernel_tiled_exact(
     float acc_num_h = 0.0f;
     float acc_num_w = 0.0f;
     float acc_den   = 0.0f;
+    float dN_hh = 0.0f, dN_hw = 0.0f, dN_wh = 0.0f, dN_ww = 0.0f;
+    float dW_h = 0.0f, dW_w = 0.0f;
 
     for (int64_t chunk_start = start; chunk_start < end; chunk_start += kChunkFwd) {
         const int chunk_count = static_cast<int>(((end - chunk_start) < kChunkFwd) ? (end - chunk_start) : kChunkFwd);
@@ -168,6 +175,16 @@ void gaussian_render_forward_kernel_tiled_exact(
                 acc_num_h += w * v_h;
                 acc_num_w += w * v_w;
                 acc_den   += w;
+                if (ComputeDerivatives) {
+                    const float dlog_h = -(gj.si.x * dh + gj.si.y * dw);
+                    const float dlog_w = -(gj.si.y * dh + gj.si.w * dw);
+                    dN_hh += w * (gj.J.x + v_h * dlog_h);
+                    dN_hw += w * (gj.J.y + v_h * dlog_w);
+                    dN_wh += w * (gj.J.z + v_w * dlog_h);
+                    dN_ww += w * (gj.J.w + v_w * dlog_w);
+                    dW_h += w * dlog_h;
+                    dW_w += w * dlog_w;
+                }
             }
         }
         __syncthreads();
@@ -177,6 +194,15 @@ void gaussian_render_forward_kernel_tiled_exact(
         out_num_h[pix] = acc_num_h;
         out_num_w[pix] = acc_num_w;
         out_den[pix]   = acc_den;
+        if (ComputeDerivatives) {
+            const int64_t stride = static_cast<int64_t>(H) * W;
+            out_derivatives[0 * stride + pix] = dN_hh;
+            out_derivatives[1 * stride + pix] = dN_hw;
+            out_derivatives[2 * stride + pix] = dN_wh;
+            out_derivatives[3 * stride + pix] = dN_ww;
+            out_derivatives[4 * stride + pix] = dW_h;
+            out_derivatives[5 * stride + pix] = dW_w;
+        }
     }
 }
 
@@ -409,6 +435,7 @@ std::vector<torch::Tensor> gaussian_render_forward_cuda(
     int64_t tile_size,
     int64_t grid_w) {
 
+    const c10::cuda::CUDAGuard device_guard(mu.device());
     auto opts = mu.options();
     auto out_num_h = torch::zeros({H, W}, opts);
     auto out_num_w = torch::zeros({H, W}, opts);
@@ -420,7 +447,8 @@ std::vector<torch::Tensor> gaussian_render_forward_cuda(
     const int pix_slices = (pix_per_tile + kThreadsFwd - 1) / kThreadsFwd;
 
     dim3 blocks(num_tiles, pix_slices);
-    gaussian_render_forward_kernel_tiled_exact<<<blocks, kThreadsFwd>>>(
+    const auto stream = at::cuda::getCurrentCUDAStream();
+    gaussian_render_forward_kernel_tiled_exact<false><<<blocks, kThreadsFwd, 0, stream>>>(
         mu.data_ptr<float>(),
         sigma_inv.data_ptr<float>(),
         opacity.data_ptr<float>(),
@@ -434,9 +462,44 @@ std::vector<torch::Tensor> gaussian_render_forward_cuda(
         static_cast<int>(grid_w),
         out_num_h.data_ptr<float>(),
         out_num_w.data_ptr<float>(),
-        out_den.data_ptr<float>());
+        out_den.data_ptr<float>(),
+        nullptr);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
 
     return {out_num_h, out_num_w, out_den};
+}
+
+torch::Tensor gaussian_render_derivatives_cuda(
+    torch::Tensor mu,
+    torch::Tensor sigma_inv,
+    torch::Tensor opacity,
+    torch::Tensor vel,
+    torch::Tensor J,
+    torch::Tensor cell_ptr,
+    torch::Tensor cell_indices,
+    int64_t H,
+    int64_t W,
+    int64_t tile_size,
+    int64_t grid_w) {
+
+    const c10::cuda::CUDAGuard device_guard(mu.device());
+    // Accumulate numerator, denominator and their analytic spatial derivatives.
+    // Each pixel owns nine scalar sums; no [tiles, pixels, Gaussians] tensor.
+    auto maps = torch::zeros({9, H, W}, mu.options());
+    float* out = maps.data_ptr<float>();
+    const int64_t stride = H * W;
+    const int grid_h = static_cast<int>((H + tile_size - 1) / tile_size);
+    const int num_tiles = grid_h * static_cast<int>(grid_w);
+    const int pix_slices = static_cast<int>((tile_size * tile_size + kThreadsFwd - 1) / kThreadsFwd);
+    const auto stream = at::cuda::getCurrentCUDAStream();
+    gaussian_render_forward_kernel_tiled_exact<true><<<dim3(num_tiles, pix_slices), kThreadsFwd, 0, stream>>>(
+        mu.data_ptr<float>(), sigma_inv.data_ptr<float>(), opacity.data_ptr<float>(),
+        vel.data_ptr<float>(), J.data_ptr<float>(),
+        cell_ptr.data_ptr<int64_t>(), cell_indices.data_ptr<int64_t>(),
+        static_cast<int>(H), static_cast<int>(W), static_cast<int>(tile_size), static_cast<int>(grid_w),
+        out, out + stride, out + 2 * stride, out + 3 * stride);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+    return maps;
 }
 
 std::vector<torch::Tensor> gaussian_render_backward_cuda(
@@ -455,6 +518,7 @@ std::vector<torch::Tensor> gaussian_render_backward_cuda(
     int64_t tile_size,
     int64_t grid_w) {
 
+    const c10::cuda::CUDAGuard device_guard(mu.device());
     auto grad_mu        = torch::zeros_like(mu);
     auto grad_sigma_inv = torch::zeros_like(sigma_inv);
     auto grad_opacity   = torch::zeros_like(opacity);
@@ -467,7 +531,8 @@ std::vector<torch::Tensor> gaussian_render_backward_cuda(
     const int pix_slices = (pix_per_tile + kThreadsBwd - 1) / kThreadsBwd;
 
     dim3 blocks(num_tiles, pix_slices);
-    gaussian_render_backward_kernel_warp_reduce_exact<<<blocks, kThreadsBwd>>>(
+    const auto stream = at::cuda::getCurrentCUDAStream();
+    gaussian_render_backward_kernel_warp_reduce_exact<<<blocks, kThreadsBwd, 0, stream>>>(
         grad_num_h.data_ptr<float>(),
         grad_num_w.data_ptr<float>(),
         grad_den.data_ptr<float>(),
@@ -487,6 +552,7 @@ std::vector<torch::Tensor> gaussian_render_backward_cuda(
         grad_opacity.data_ptr<float>(),
         grad_vel.data_ptr<float>(),
         grad_J.data_ptr<float>());
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
 
     return {grad_mu, grad_sigma_inv, grad_opacity, grad_vel, grad_J};
 }

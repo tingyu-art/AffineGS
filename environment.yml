@@ -1,0 +1,9 @@
+name: affinegs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8.5
+  - pip
+  - ninja=1.12.1
+  - pip:
+      - -r requirements-validated.txt

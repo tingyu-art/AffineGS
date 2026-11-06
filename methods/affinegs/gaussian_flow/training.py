@@ -11,7 +11,9 @@ from utils.flow_classifier import is_turbulence
 from .config import GaussianFlowConfig, GaussianFlowResult
 from .density_control import adaptive_density_control, create_optimizer, decide_phase
 from .model import GaussianVelocityField_Tiled
+from .renderer import initialize_cuda_renderer
 from .utils import build_event_density_map, divergence_regularizer
+from utils.input_validation import validate_events, validate_gs_config, validate_flow
 
 
 def _plot_training_history(history, phase):
@@ -144,8 +146,18 @@ def train_gaussian_flow(
     不计算解析散度/旋度，减少不必要的内存和计算开销。
     训练结束后模型保持 train() 状态，需要渲染时调用 render_gaussian_flow()。
     """
+    validate_gs_config(cfg)
+    if not torch.is_tensor(events):
+        raise TypeError("GS training events must be a torch.Tensor")
+    validate_events(events, cfg.H, cfg.W)
+    if flowgt is not None:
+        validate_flow(flowgt, cfg.H, cfg.W, name='flowgt')
     device     = cfg.device
     supervised = flowgt is not None
+
+    # JIT/import failures are resolved before input upload and model allocation.
+    renderer_policy = getattr(cfg, 'cuda_renderer_policy', 'error')
+    render_backend = initialize_cuda_renderer(device, renderer_policy)
 
     events = events.to(device)
     if flowgt is not None:
@@ -164,6 +176,9 @@ def train_gaussian_flow(
         jacobian_mode   = cfg.jacobian_mode,
         init_scale_h    = cfg.init_scale_h,
         init_scale_w    = cfg.init_scale_w,
+        render_tile_batch_size = getattr(cfg, 'render_tile_batch_size', 32),
+        log_scale_min   = cfg.log_scale_min,
+        cuda_renderer_policy = renderer_policy,
     ).to(device)
     model.rebuild_indexer()
 
@@ -184,9 +199,11 @@ def train_gaussian_flow(
         loss_type   = cfg.cmax_loss_type,
         sigma       = cfg.cmax_sigma,
         kernel_size = cfg.cmax_kernel_size,
+        validate_inputs = False,  # Events were validated once at the training entry.
     ).to(device)
 
     if cfg.verbose:
+        print(f"Renderer backend: {render_backend}")
         print(f"开始训练 | 初始高斯数: {model.num_gaussians}")
 
     history        = defaultdict(list)
@@ -219,8 +236,7 @@ def train_gaussian_flow(
         optimizer.step()
         scheduler.step()
 
-        with torch.no_grad():
-            model.log_scale.clamp_(min=cfg.log_scale_min, max=np.log(cfg.H / 6))
+        model.clamp_scales_()
 
         history['total'].append(total_loss.item())
         history['data'].append(loss_data.item())

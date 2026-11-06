@@ -15,6 +15,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from utils.input_validation import validate_events, validate_flow, positive_int
 
 
 
@@ -34,9 +35,10 @@ class ContrastMaximizationLoss(nn.Module):
                         如 kernel_size=3 → 3×3 邻域，kernel_size=5 → 5×5 邻域
     """
 
-    def __init__(self, loss_type='structure', sigma=0.5, kernel_size=3):
+    def __init__(self, loss_type='structure', sigma=0.5, kernel_size=3, validate_inputs=True):
         super(ContrastMaximizationLoss, self).__init__()
         self.loss_type = loss_type
+        self.validate_inputs = validate_inputs
         self.sigma = sigma
         self.kernel_size = kernel_size
         self.splat_radius = max(1, kernel_size // 2)
@@ -305,6 +307,7 @@ class ContrastMaximizationLoss(nn.Module):
         min_events_per_block=0,
         use_polarity=False,
         no_grad=True,
+        return_debug=False,
     ):
         """
         计算块级局部方差 proxy（无监督 proxy，不参与主数据损失）。
@@ -332,6 +335,10 @@ class ContrastMaximizationLoss(nn.Module):
             valid_map : [Hb, Wb] bool
             debug     : 可选调试字典
         """
+        positive_int(block_size, 'block_size')
+        if image_size[0] < block_size or image_size[1] < block_size:
+            raise ValueError("block_size must not exceed the image dimensions")
+
         def _impl():
             events_local = events
             if events_local is None or len(events_local) == 0:
@@ -374,6 +381,8 @@ class ContrastMaximizationLoss(nn.Module):
             count_total = self._count_events_per_block(events_local, image_size, block_size)
             valid_map = count_total >= float(min_events_per_block)
 
+            if return_debug:
+                return score_map, valid_map, {'event_counts': count_total}
             return score_map, valid_map
 
         if no_grad:
@@ -410,6 +419,9 @@ class ContrastMaximizationLoss(nn.Module):
         events : [N, 4]，[:,0]=h，[:,1]=w，[:,2]=t，[:,3]=p
         flow   : [2, H, W]，通道0=vel_h，通道1=vel_w
         """
+        if self.validate_inputs:
+            validate_events(events, *image_size)
+            validate_flow(flow, *image_size)
         t_ref = self._resolve_t_ref(events)
 
         use_fused = (

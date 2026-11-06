@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from .indexing import GAUSSIAN_VALUE_THRESHOLD, GaussianSpatialIndexer
-from .renderer import HAS_CUDA_RENDERER, render_gaussians_cuda
+from .renderer import HAS_CUDA_RENDERER, initialize_cuda_renderer, render_gaussians_cuda, gaussian_render_derivatives_cuda
 from .utils import _has_jacobian
 
 
@@ -12,7 +12,8 @@ class GaussianVelocityField_Tiled(nn.Module):
 
     def __init__(self, num_gaussians, H, W, tile_size,
                  enable_jacobian=True, device='cuda', jacobian_mode='full',
-                 init_scale_h=7.0, init_scale_w=7.0):
+                 init_scale_h=7.0, init_scale_w=7.0, render_tile_batch_size=32,
+                 log_scale_min=0.0, cuda_renderer_policy='error'):
         super().__init__()
         self.num_gaussians   = num_gaussians
         self.H, self.W       = H, W
@@ -22,6 +23,15 @@ class GaussianVelocityField_Tiled(nn.Module):
         self.jacobian_mode   = jacobian_mode
         self.init_scale_h    = float(init_scale_h)
         self.init_scale_w    = float(init_scale_w)
+        self.log_scale_min  = float(log_scale_min)
+        self.log_scale_max  = float(np.log(H / 6))
+        if not math.isfinite(self.log_scale_min) or self.log_scale_min < 0.0:
+            raise ValueError("log_scale_min must be finite and >= log(1.0)")
+        if self.log_scale_min > self.log_scale_max:
+            raise ValueError("Minimum scale must not exceed H / 6")
+        if not isinstance(render_tile_batch_size, int) or render_tile_batch_size < 0:
+            raise ValueError("render_tile_batch_size must be a non-negative integer")
+        self.render_tile_batch_size = render_tile_batch_size
 
         if self.jacobian_mode not in ("full", "trace_free"):
             raise ValueError(
@@ -31,6 +41,10 @@ class GaussianVelocityField_Tiled(nn.Module):
 
         if self.init_scale_h <= 1.0 or self.init_scale_w <= 1.0:
             raise ValueError("init_scale_h and init_scale_w must be > 1.0")
+
+        self.cuda_renderer_policy = cuda_renderer_policy
+        self.render_backend = initialize_cuda_renderer(device, cuda_renderer_policy)
+        self._renderer_device_type = torch.device(device).type
 
         # Sample each coordinate against its own spatial extent.  Using H for
         # both axes leaves the right side of non-square (W > H) inputs without
@@ -45,7 +59,7 @@ class GaussianVelocityField_Tiled(nn.Module):
             torch.log(torch.stack([
                 1.0 + torch.rand(num_gaussians, device=device) * (self.init_scale_h - 1.0),
                 1.0 + torch.rand(num_gaussians, device=device) * (self.init_scale_w - 1.0)
-            ], dim=1)))
+            ], dim=1)).clamp(min=self.log_scale_min, max=self.log_scale_max))
         self.opacity_logit  = nn.Parameter(torch.zeros(num_gaussians, 1, device=device))
         self.rotation       = nn.Parameter(torch.rand(num_gaussians, 1, device=device) * torch.pi)
         self.local_velocity = nn.Parameter(torch.randn(num_gaussians, 2, device=device))
@@ -70,20 +84,30 @@ class GaussianVelocityField_Tiled(nn.Module):
         self._indexer_cache = None
 
     # ------------------------------------------------------------------
+    def clamped_log_scale(self):
+        """The same effective log-scales for rendering, indexing and density control."""
+        return self.log_scale.clamp(min=self.log_scale_min, max=self.log_scale_max)
+
+    def get_scales(self):
+        return torch.exp(self.clamped_log_scale())
+
+    @torch.no_grad()
+    def clamp_scales_(self):
+        """Keep stored parameters inside the bounds used by all evaluation paths."""
+        self.log_scale.clamp_(min=self.log_scale_min, max=self.log_scale_max)
+
     def rebuild_indexer(self):
         with torch.no_grad():
-            log_s = self.log_scale.clamp(min=np.log(1), max=np.log(self.H / 6))
             self._indexer_cache = GaussianSpatialIndexer(
                 self.mu.detach().clone(),
-                torch.exp(log_s).detach().clone(),
+                self.get_scales().detach().clone(),
                 self.rotation.detach().clone(),
                 (self.H, self.W),
                 self.tile_size
             )
 
     def compute_covariance_inv_and_R(self):
-        log_s = self.log_scale.clamp(min=np.log(1), max=np.log(self.H / 6))
-        s     = torch.exp(log_s)
+        s     = self.get_scales()
         r     = self.rotation.squeeze(-1)
         cos_r = torch.cos(r)
         sin_r = torch.sin(r)
@@ -133,6 +157,14 @@ class GaussianVelocityField_Tiled(nn.Module):
         return torch.bmm(R, torch.bmm(J_local, R.transpose(1, 2)))
 
     # ------------------------------------------------------------------
+    def _uses_cuda_renderer(self):
+        # Support moving a model between CPU and CUDA after construction.
+        device = self.mu.device
+        if self._renderer_device_type != device.type:
+            self.render_backend = initialize_cuda_renderer(device, self.cuda_renderer_policy)
+            self._renderer_device_type = device.type
+        return device.type == 'cuda' and self.render_backend == 'cuda'
+
     def forward(self, rebuild_index=False, compute_derivatives=False):
         """
         返回:
@@ -162,7 +194,7 @@ class GaussianVelocityField_Tiled(nn.Module):
             zeros_hw = torch.zeros(self.H, self.W, device=device)
             return (_zf, _zw, zeros_hw, zeros_hw) if compute_derivatives else (_zf, _zw, None, None)
 
-        if not compute_derivatives and device.type == 'cuda' and HAS_CUDA_RENDERER:
+        if not compute_derivatives and self._uses_cuda_renderer():
             J_render = J if J is not None else torch.zeros(
                 self.num_gaussians, 2, 2, device=device, dtype=self.mu.dtype
             )
@@ -341,6 +373,125 @@ class GaussianVelocityField_Tiled(nn.Module):
         return flow, weight_map, None, None
 
     # ------------------------------------------------------------------
+    def _render_native_batched(self, tile_batch_size, compute_derivatives=True):
+        """Render native pixels in bounded tile batches using scalar derivative sums."""
+        if self._indexer_cache is None:
+            self.rebuild_indexer()
+        indexer = self._indexer_cache
+        device = self.mu.device
+        H, W = self.H, self.W
+        si, rotation, _ = self.compute_covariance_inv_and_R()
+        opacity = self.opacity_logit.sigmoid().squeeze(-1)
+        velocity = (rotation @ self.local_velocity.unsqueeze(-1)).squeeze(-1)
+        jacobian = self.build_jacobian_matrix(rotation)
+        counts_all = indexer.cell_ptr[1:] - indexer.cell_ptr[:-1]
+        active = torch.where(counts_all > 0)[0]
+        channels = 9 if compute_derivatives else 3
+        accum = torch.zeros(channels, H * W, device=device)
+
+        for tile_ids in active.split(tile_batch_size):
+            if tile_ids.numel() == 0:
+                continue
+            counts = counts_all[tile_ids]
+            k_max = int(counts.max().item())
+            offset = torch.arange(k_max, device=device).unsqueeze(0)
+            gaussian_valid = offset < counts.unsqueeze(1)
+            positions = indexer.cell_ptr[tile_ids].unsqueeze(1) + offset
+            safe_positions = torch.where(gaussian_valid, positions, 0)
+            gids = indexer.cell_indices[safe_positions]
+            mu = self.mu[gids]
+            cur_si = si[gids]
+            cur_vel = velocity[gids]
+            cur_j = jacobian[gids] if jacobian is not None else None
+            origins = torch.stack([
+                (tile_ids // indexer.grid_w * self.tile_size).float(),
+                (tile_ids % indexer.grid_w * self.tile_size).float(),
+            ], dim=-1).unsqueeze(1)
+            coords = origins + self._local_coords
+            pixel_valid = (coords[..., 0] < H) & (coords[..., 1] < W)
+            coords = torch.where(pixel_valid.unsqueeze(-1), coords, origins.expand_as(coords))
+            delta = coords.unsqueeze(2) - mu.unsqueeze(1)
+            dh, dw = delta[..., 0], delta[..., 1]
+            si_hh = cur_si[..., 0, 0].unsqueeze(1)
+            si_hw = cur_si[..., 0, 1].unsqueeze(1)
+            si_ww = cur_si[..., 1, 1].unsqueeze(1)
+            term = dh * dh * si_hh + 2 * dh * dw * si_hw + dw * dw * si_ww
+            gaussian = torch.exp(-0.5 * term)
+            valid = gaussian_valid.unsqueeze(1) & pixel_valid.unsqueeze(2)
+            valid = valid & (gaussian >= GAUSSIAN_VALUE_THRESHOLD)
+            weights = torch.where(valid, gaussian, 0.0) * opacity[gids].unsqueeze(1)
+            if cur_j is None:
+                vel_affine = 0.0
+            else:
+                vel_affine = torch.stack([
+                    cur_j[..., 0, 0].unsqueeze(1) * dh + cur_j[..., 0, 1].unsqueeze(1) * dw,
+                    cur_j[..., 1, 0].unsqueeze(1) * dh + cur_j[..., 1, 1].unsqueeze(1) * dw,
+                ], dim=-1)
+            vel_all = cur_vel.unsqueeze(1) + vel_affine
+            numerator = (weights.unsqueeze(-1) * vel_all).sum(dim=2)
+            denominator = weights.sum(dim=2, keepdim=True)
+            sources = [numerator, denominator]
+            if compute_derivatives:
+                dlog_h = -(si_hh * dh + si_hw * dw)
+                dlog_w = -(si_hw * dh + si_ww * dw)
+                j = cur_j if cur_j is not None else torch.zeros(
+                    len(tile_ids), k_max, 2, 2, device=device
+                )
+                vh, vw = vel_all[..., 0], vel_all[..., 1]
+                dN_hh = (weights * (j[..., 0, 0].unsqueeze(1) + vh * dlog_h)).sum(dim=2)
+                dN_hw = (weights * (j[..., 0, 1].unsqueeze(1) + vh * dlog_w)).sum(dim=2)
+                dN_wh = (weights * (j[..., 1, 0].unsqueeze(1) + vw * dlog_h)).sum(dim=2)
+                dN_ww = (weights * (j[..., 1, 1].unsqueeze(1) + vw * dlog_w)).sum(dim=2)
+                dW_h = (weights * dlog_h).sum(dim=2)
+                dW_w = (weights * dlog_w).sum(dim=2)
+                sources.append(torch.stack([dN_hh, dN_hw, dN_wh, dN_ww, dW_h, dW_w], dim=-1))
+            source = torch.cat(sources, dim=-1)
+            keep = pixel_valid.reshape(-1)
+            flat_idx = (coords[..., 0].long() * W + coords[..., 1].long()).reshape(-1)[keep]
+            accum.scatter_add_(
+                1, flat_idx.unsqueeze(0).expand(channels, -1),
+                source.reshape(-1, channels)[keep].T,
+            )
+
+        maps = accum.reshape(channels, H, W)
+        weight_map = maps[2:3]
+        safe_weight = weight_map + 1e-8
+        flow = maps[:2] / safe_weight
+        if not compute_derivatives:
+            return flow, weight_map, None, None
+        safe = safe_weight.squeeze(0)
+        dUh_dh = (maps[3] - flow[0] * maps[7]) / safe
+        dUh_dw = (maps[4] - flow[0] * maps[8]) / safe
+        dUw_dh = (maps[5] - flow[1] * maps[7]) / safe
+        dUw_dw = (maps[6] - flow[1] * maps[8]) / safe
+        return flow, weight_map, dUh_dh + dUw_dw, dUw_dh - dUh_dw
+
+    def _render_native_cuda(self, compute_derivatives=True):
+        """Use the training CUDA tile renderer, adding analytic derivative sums."""
+        if not compute_derivatives:
+            return self.forward(compute_derivatives=False)
+        indexer = self._indexer_cache
+        si, rotation, _ = self.compute_covariance_inv_and_R()
+        opacity = self.opacity_logit.sigmoid()
+        velocity = (rotation @ self.local_velocity.unsqueeze(-1)).squeeze(-1)
+        jacobian = self.build_jacobian_matrix(rotation)
+        if jacobian is None:
+            jacobian = self.mu.new_zeros(self.num_gaussians, 2, 2)
+        maps = gaussian_render_derivatives_cuda(
+            self.mu, si, opacity, velocity, jacobian,
+            indexer.cell_ptr, indexer.cell_indices,
+            self.H, self.W, self.tile_size, indexer.grid_w,
+        )
+        weight_map = maps[2:3]
+        safe_weight = weight_map + 1e-8
+        flow = maps[:2] / safe_weight
+        safe = safe_weight.squeeze(0)
+        dUh_dh = (maps[3] - flow[0] * maps[7]) / safe
+        dUh_dw = (maps[4] - flow[0] * maps[8]) / safe
+        dUw_dh = (maps[5] - flow[1] * maps[7]) / safe
+        dUw_dw = (maps[6] - flow[1] * maps[8]) / safe
+        return flow, weight_map, dUh_dh + dUw_dw, dUw_dh - dUh_dw
+
     def render_at_resolution(self, eval_H: int, eval_W: int,
                              compute_derivatives: bool = True):
         """
@@ -352,21 +503,34 @@ class GaussianVelocityField_Tiled(nn.Module):
             - eval 时查询分数坐标 0, H/eval_H, 2H/eval_H, ..., H-H/eval_H
               即在同一坐标空间内插入更多采样点，天然得到更高分辨率的输出。
 
-        Tile 索引器（Gaussian→tile 分配）基于 [0,H)×[0,W) 坐标，eval 时完全复用，
-        无需重建。每个 tile 内的查询点数从 ts×ts 变为 pts_h×pts_w
+        Tile 索引器（Gaussian→tile 分配）基于 [0,H)×[0,W) 坐标，每次最终渲染前
+        都按当前参数重建。每个 tile 内的查询点数从 ts×ts 变为 pts_h×pts_w
         （pts_h = ceil(ts * eval_H/H)），分数偏移量为 [ih * H/eval_H, iw * W/eval_W]。
         散射目标从 H×W 的 flat buffer 换成 eval_H×eval_W 的 flat buffer：
             output_i = round(gauss_h * eval_H/H)，output_j = round(gauss_w * eval_W/W)
 
         仅应在 torch.no_grad() + model.eval() 上下文中调用。
+
+        原分辨率无梯度推理在 CUDA 上使用与训练共用的融合 tile 内核，
+        直接累加解析导数；非 CUDA 后端默认分批处理 32 个 tile。
+        render_tile_batch_size=0、其他输出分辨率或启用梯度时保留原路径。
         """
+        # Training can leave a cache from an earlier optimizer step. Refresh
+        # before dispatch so both batched and ordinary final rendering use
+        # the final centers, scales and rotations.
+        self.rebuild_indexer()
+        tile_batch_size = getattr(self, 'render_tile_batch_size', 32)
+        if (tile_batch_size > 0 and not torch.is_grad_enabled()
+                and (eval_H, eval_W) == (self.H, self.W)):
+            if self._uses_cuda_renderer():
+                return self._render_native_cuda(compute_derivatives)
+            return self._render_native_batched(tile_batch_size, compute_derivatives)
+
         device = self.mu.device
         sf_h   = eval_H / self.H   # 行方向缩放因子
         sf_w   = eval_W / self.W   # 列方向缩放因子
 
         # ── Gaussian 参数（完全不变）──────────────────────────────────────
-        if self._indexer_cache is None:
-            self.rebuild_indexer()
         indexer = self._indexer_cache
 
         Sigma_inv, R, _ = self.compute_covariance_inv_and_R()

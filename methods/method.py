@@ -8,6 +8,7 @@ from .inr.frames import events_to_voxel_grid, events_to_est
 from .inr.inr import MLP_Conv, train_func
 from .affinegs.gaussian_flow.config import GaussianFlowConfig
 from .affinegs.gaussian_flow.training import run_gaussian_flow
+from utils.input_validation import validate_events, positive_int
 
 # ====================== PyTorch ============================
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -19,15 +20,16 @@ TEMPORAL_NUM_BINS = 16
 
 def _select_event_window(evts, window_ms=EVENT_WINDOW_MS):
     """Use the first window_ms, or all input events when window_ms is None."""
-    if len(evts) == 0:
-        raise ValueError("The method requires a non-empty event window")
+    if not torch.is_tensor(evts):
+        raise TypeError("method events must be a torch.Tensor")
+    validate_events(evts)
     if window_ms is not None and (not np.isfinite(window_ms) or window_ms <= 0):
         raise ValueError("window_ms must be positive and finite, or None")
     start = evts[:, 2].min()
     events = evts if window_ms is None else evts[
         (evts[:, 2] >= start) & (evts[:, 2] < start + window_ms)
     ]
-    if events[:, 2].max() <= start:
+    if len(events) == 0 or events[:, 2].max() <= start:
         raise ValueError("The method requires at least two distinct event times")
     return events
 
@@ -50,8 +52,30 @@ def constGS(evts, H=256, W=256):
     vor = result.vorticity
     return u, v, div, vor
 
+@torch.no_grad()
+def _render_inr_output(model, xs, dt, return_derivatives=False):
+    """Full-image velocity query; analytic derivative maps are optional.
+
+    Keep the four-result estimator interface. Unrequested derivative maps are
+    returned as None and are not evaluated. Training regularization is separate.
+    """
+    u, v = model(xs, dt=dt)
+    u, v = u.squeeze().cpu().numpy(), v.squeeze().cpu().numpy()
+    if not return_derivatives:
+        return u, v, None, None
+    _, _, dvx_dx, dvx_dy, dvy_dx, dvy_dy = model.forward_manual_grad(xs, dt=dt)
+    div = dvx_dy + dvy_dx
+    vor = dvy_dy - dvx_dx
+    return u, v, div.squeeze(0).squeeze(0).cpu(), vor.squeeze(0).squeeze(0).cpu()
+
+
 def inr_vg(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
-           num_bins=TEMPORAL_NUM_BINS):
+           num_bins=TEMPORAL_NUM_BINS, return_derivatives=False):
+    """INR-VG; set return_derivatives=True to request analytic div/vorticity maps."""
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < 9:
+        raise ValueError("INR requires num_bins >= 9 to support its temporal pair offset of 6")
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
     # vg = (vg*255/(torch.max(vg)+1e-8))
@@ -68,15 +92,15 @@ def inr_vg(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
     inr_model = MLP_Conv(ne=64, beta=100).to(device)
     trained_model = train_func(model=inr_model, xs=xs, vg=vg, dt=1.0, 
                              num_epochs=1000, learning_rate=0.001, lambda_smooth=10.0, verbose=False)
-    u, v = inr_model(xs,dt=dt)
-    u, v = u.squeeze().detach().cpu().numpy(), v.squeeze().detach().cpu().numpy()
-    vx, vy, dvx_dx, dvx_dy, dvy_dx, dvy_dy = trained_model.forward_manual_grad(xs,dt=dt)
-    div = dvx_dy + dvy_dx
-    vor = dvx_dx - dvy_dy
-    return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
+    return _render_inr_output(trained_model, xs, dt, return_derivatives)
 
 def inr_est(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
-            num_bins=TEMPORAL_NUM_BINS):
+            num_bins=TEMPORAL_NUM_BINS, return_derivatives=False):
+    """INR-EST; set return_derivatives=True to request analytic div/vorticity maps."""
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < 9:
+        raise ValueError("INR requires num_bins >= 9 to support its temporal pair offset of 6")
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_est(evts, num_bins, H=H, W=W)
     dt = (dts/(num_bins - 1)).item()
@@ -92,13 +116,7 @@ def inr_est(evts, H=256, W=256, *, event_window_ms=EVENT_WINDOW_MS,
     inr_model = MLP_Conv(ne=64, beta=100).to(device)
     trained_model = train_func(model=inr_model, xs=xs, vg=vg, dt=1.0, 
                              num_epochs=1000, learning_rate=0.001, lambda_smooth=10.0, verbose=False)
-    u, v = inr_model(xs, dt=dt)
-    u, v = u.squeeze().detach().cpu().numpy(), v.squeeze().detach().cpu().numpy()
-    vx, vy, dvx_dx, dvx_dy, dvy_dx, dvy_dy = trained_model.forward_manual_grad(xs,dt=dt)
-    div = dvx_dy + dvy_dx
-    vor = dvx_dx - dvy_dy
-    
-    return u, v, div.squeeze(0).squeeze(0).cpu(), -vor.squeeze(0).squeeze(0).cpu()
+    return _render_inr_output(trained_model, xs, dt, return_derivatives)
 
 
 CLASSICAL_NUM_BINS = TEMPORAL_NUM_BINS
@@ -172,11 +190,11 @@ def _resolve_farneback_params(H, W, profile="auto", resize_factor=None):
         profile = _resolution_band(H, W)
 
     presets = {
-        "quality": dict(resize_factor=1.0, levels=3, winsize=15, iterations=15, blur_ksize=(3, 3)),
-        "low":     dict(resize_factor=1.0, levels=3, winsize=15, iterations=15, blur_ksize=(3, 3)),
-        "medium":  dict(resize_factor=1.25, levels=3, winsize=17, iterations=10, blur_ksize=(3, 3)),
-        "high":    dict(resize_factor=1.5, levels=3, winsize=19, iterations=8, blur_ksize=(3, 3)),
-        "fast":    dict(resize_factor=2.0, levels=3, winsize=21, iterations=5, blur_ksize=(5, 5)),
+        "quality": dict(resize_factor=1.0, levels=3, winsize=13, iterations=10, blur_ksize=(3, 3), poly_sigma=0.9),
+        "low":     dict(resize_factor=1.0, levels=3, winsize=13, iterations=10, blur_ksize=(3, 3), poly_sigma=0.9),
+        "medium":  dict(resize_factor=1.25, levels=3, winsize=17, iterations=10, blur_ksize=(3, 3), poly_sigma=1.3),
+        "high":    dict(resize_factor=1.5, levels=3, winsize=19, iterations=8, blur_ksize=(3, 3), poly_sigma=1.3),
+        "fast":    dict(resize_factor=2.0, levels=3, winsize=21, iterations=5, blur_ksize=(5, 5), poly_sigma=1.3),
     }
     if profile not in presets:
         raise ValueError(f"Unknown Farneback profile={profile!r}; expected one of {sorted(presets)} or 'auto'.")
@@ -184,7 +202,7 @@ def _resolve_farneback_params(H, W, profile="auto", resize_factor=None):
     params = presets[profile].copy()
     if resize_factor is not None:
         params["resize_factor"] = float(resize_factor)
-    params.update(dict(pyr_scale=0.5, poly_n=7, poly_sigma=1.3, flags=0))
+    params.update(dict(pyr_scale=0.5, poly_n=7, flags=0))
     return params
 
 
@@ -258,6 +276,10 @@ def _run_ilk_from_voxel_grid(vg, dt, H, W, profile="auto", radius=None, num_warp
 
 def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None, *,
           event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < CLASSICAL_PAIR_OFFSET + 3:
+        raise ValueError('num_bins is too small for the classical temporal pair offset')
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
     dt = (dts/(num_bins - 1)).item()
@@ -266,6 +288,10 @@ def of_vg(evts, H=256, W=256, profile="auto", resize_factor=None, *,
 
 def of_est(evts, H=256, W=256, profile="auto", resize_factor=None, *,
            event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < CLASSICAL_PAIR_OFFSET + 3:
+        raise ValueError('num_bins is too small for the classical temporal pair offset')
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_est(evts, num_bins, H=H, W=W)
     dt = (dts/(num_bins - 1)).item()
@@ -276,6 +302,10 @@ def of_est(evts, H=256, W=256, profile="auto", resize_factor=None, *,
 def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
            profile="auto", resize_factor=None, blur_ksize="auto", *,
            event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < CLASSICAL_PAIR_OFFSET + 3:
+        raise ValueError('num_bins is too small for the classical temporal pair offset')
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_voxel_grid(evts, num_bins, H=H, W=W)
     dt = (dts/(num_bins - 1)).item()
@@ -292,6 +322,10 @@ def ilk_vg(evts, radius=None, num_warp=None, H=256, W=256,
 def ilk_est(evts, radius=None, num_warp=None, H=256, W=256,
             profile="auto", resize_factor=None, blur_ksize="auto", *,
             event_window_ms=EVENT_WINDOW_MS, num_bins=CLASSICAL_NUM_BINS):
+    validate_events(evts, H, W)
+    positive_int(num_bins, 'num_bins')
+    if num_bins < CLASSICAL_PAIR_OFFSET + 3:
+        raise ValueError('num_bins is too small for the classical temporal pair offset')
     evts = _select_event_window(evts, event_window_ms)
     vg, dts = events_to_est(evts, num_bins, H=H, W=W)
     dt = (dts/(num_bins - 1)).item()
