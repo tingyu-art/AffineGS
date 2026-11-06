@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "changed_source_cells": [
+    2,
+    14
+  ],
+  "changed_output_cells": [
+    7,
+    10,
+    14
+  ],
+  "numeric_results_unchanged": true,
+  "training_executed": false,
+  "pairs": [
+    {
+      "experiment": "Jacobian",
+      "scale": "log",
+      "ylim": [
+        0.07647540983606557,
+        1.9124720000000002
+      ],
+      "ticks_identical": true
+    },
+    {
+      "experiment": "FrozenGeometry",
+      "scale": "log",
+      "ylim": [
+        0.07401639344262295,
+        1.832928
+      ],
+      "ticks_identical": true
+    },
+    {
+      "experiment": "Density",
+      "scale": "linear",
+      "ylim": [
+        0.0,
+        1.0
+      ],
+      "ticks_identical": true
+    },
+    {
+      "experiment": "Noise",
+      "scale": "linear",
+      "ylim": [
+        0.0,
+        0.6
+      ],
+      "ticks_identical": true
+    }
+  ]
+}

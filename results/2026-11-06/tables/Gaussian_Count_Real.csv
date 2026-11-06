@@ -1,11 +1,11 @@
 Flow,Sample,Initial Gaussians,Final Gaussians
-EBIV,10–20 ms,500,442
-EBIV,20–30 ms,500,446
-EBIV,30–40 ms,500,540
-EBIV,40–50 ms,500,455
-EBIV,50–60 ms,500,442
-Water,10–20 ms,500,455
-Water,20–30 ms,500,474
+EBIV,10–20 ms,500,430
+EBIV,20–30 ms,500,438
+EBIV,30–40 ms,500,533
+EBIV,40–50 ms,500,453
+EBIV,50–60 ms,500,446
+Water,10–20 ms,500,452
+Water,20–30 ms,500,478
 Water,30–40 ms,500,488
-Water,40–50 ms,500,487
-Water,50–60 ms,500,481
+Water,40–50 ms,500,489
+Water,50–60 ms,500,483

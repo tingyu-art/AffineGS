@@ -64,11 +64,11 @@ warmed up outside benchmark timing.
 
 ## Saved results and notebook previews
 
-All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Progress-widget references without saved widget state are omitted from the static view.
+All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Saved outputs are preserved except for the explicitly requested EXP1 paired-axis alignment and EXP_OTHER rerun.
 
 [Selected result files and their provenance](results/2026-11-06/README.md) include the Figure 5–10 curves and panels, Table 1/2 values, density-control results and Table C1. CSV/JSON files accompany the figures. Raw recordings, full real-data velocity arrays, build products and local audit bundles are not part of this selected result snapshot.
 
-EXP1 and appendix plots were refreshed from existing saved data without rerunning training. EXP2 previews identify their saved run explicitly; they should not be interpreted as a fresh run of every current source file. EXP3 and Table C1 use the same verified saved fields. EXP_OTHER displays its previously saved verified Table 3 and count results without requiring a new execution. Their source is stated in the notebook; the newer shared-device run is archived separately and is not an isolated performance benchmark.
+EXP2, EXP3 and EXP_APPENDIX retain their original saved outputs. EXP1 retains its original data and styles; only the user-requested paired RMSE/AEE axis limits, scales and ticks were aligned for the Jacobian, frozen-geometry and density plots. Training was not rerun for that display change. Some notebook outputs predate the separately saved result files; those files retain their own run provenance. EXP_OTHER contains the actual output of the latest user-requested full execution (20261106T142433). Other CUDA processes were present, so its single-pass times are not an isolated performance benchmark.
 
 ![Real-data comparison](results/2026-11-06/figures/Fig_10_RealData_AllMethods.png)
 
