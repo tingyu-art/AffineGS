@@ -1,33 +1,28 @@
 # AffineGS: Velocity Representation via Mixture of Affine Gaussians for Event-based Imaging Velocimetry
-<!-- [![preprint](https://img.shields.io/static/v1?label=Journal&message=Submitted&color=B31B1B)](https://github.com/yongleex/INR-VG)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) -->
-
 
 This repository contains the official code for the submitted paper __AffineGS: Velocity Representation via Mixture of Affine Gaussians for Event-based Imaging Velocimetry__. This paper presents an efficient method for event-based imaging velocimetry based on affine Gaussian (AffineGS) to reconstruct velocity fields from sparse event streams.
 
 
 ## Methods
-[![Method overview](data/fig2_method_overview.svg)](data/fig2_method_overview.pdf)
+[![Method overview](data/fig2_method_overview.png)](data/fig2_method_overview.pdf)
 The velocity field is modeled as a compact weighted superposition of localized anisotropic Gaussian primitives with continuous spatial support. Beyond a local velocity vector, each primitive is equipped with a velocity-gradient Jacobian matrix, which explicitly represents affine velocity variations within its neighborhood and improves the capacity to capture complex flow structures. The Gaussian parameters are estimated through test-time optimization in a contrast-maximization framework, where collapse-suppression regularization is incorporated to improve physical consistency. An adaptive density control strategy further refines the primitive distribution, while localized Gaussian evaluation and tile-based rendering reduce the computational cost.
 
 
 ## Install dependencies
+
+From the repository root, create the reference Linux environment:
+
 ```bash
 conda env create -f environment.yml
 conda activate affinegs
-python -m pip install ipywidgets==8.1.7
 python -m ipykernel install --user --name affinegs --display-name "AffineGS"
 ```
 
-The tested package versions are pinned in [requirements-validated.txt](requirements-validated.txt).
-[environment-validated.json](environment-validated.json) records the local validation
-platform: Linux, Python 3.8.5, PyTorch 1.13.1+cu117 and RTX 3090. The extensions were built
-with CUDA toolkit 11.2 and GCC 9; the PyTorch CUDA runtime is 11.7. These are recorded
-versions, not a claim that other versions were tested. A compatible NVIDIA driver,
-CUDA toolkit, C++ compiler and `ninja` executable are required for CUDA extension
-compilation. The Jupyter/VS Code frontend may run separately; select the AffineGS
-kernel. The extra `ipywidgets` installation supports the notebook progress bars.
-EXP_OTHER requires an NVIDIA CUDA GPU.
+- [environment.yml](environment.yml) is the Conda setup entry point. It creates the Python environment, installs Ninja, and loads the Python packages below.
+- [requirements.txt](requirements.txt) lists the pinned Python dependencies, including `ipywidgets` for notebook progress bars.
+- [docs/reference-environment.json](docs/reference-environment.json) records the hardware, package versions and compilers used for the existing runs; it is not an installation file or a clean-install verification report.
+
+The recorded setup uses Linux, Python 3.8.5, PyTorch 1.13.1+cu117 and an RTX 3090. The CUDA extensions were built with CUDA toolkit 11.2 and GCC 9.4.0; the PyTorch CUDA runtime is 11.7. A compatible NVIDIA driver, CUDA toolkit, C++ compiler and the Ninja executable are required for CUDA extension compilation. These external build tools are not installed by `requirements.txt`. The Jupyter or VS Code frontend may run separately; select the **AffineGS** kernel. EXP_OTHER requires an NVIDIA CUDA GPU.
 
 The Gaussian renderer is compiled through PyTorch JIT when CUDA training is initialized, so the CUDA toolkit, compiler and `ninja` must remain available. Build the CMax extension for fused IWE accumulation:
 
@@ -103,7 +98,7 @@ Real event data are captured using a practical event-based imaging velocimetry (
 - a water-tank flow by our in-house EBIV setup, and
 - a water-tank flow experiment by Willert and Klinner (2022).
 
-The repository includes synthetic NPZ examples and `data/water.hdf5`. The full adapted PIV dataset and the EBIV recording `data/real_old/ebiv_wallflow4_dense.h5` must be supplied separately. Set `DATA_ROOT` in EXP_APPENDIX and `COUNT_DATA_ROOT` in EXP_OTHER to the local PIV NPZ directory; check EXP_OTHER's `find_project_root()` if running a different checkout on the original machine.
+The repository includes synthetic NPZ examples and `data/water.hdf5`. The full adapted PIV dataset and the EBIV recording `data/real_old/ebiv_wallflow4_dense.h5` must be supplied separately. Set `DATA_ROOT` in EXP_APPENDIX and `COUNT_DATA_ROOT` in EXP_OTHER to the local PIV NPZ directory.
 
 
 ## BibTeX

@@ -6,4 +6,4 @@ dependencies:
   - pip
   - ninja=1.12.1
   - pip:
-      - -r requirements-validated.txt
+      - -r requirements.txt
