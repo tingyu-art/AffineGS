@@ -15,26 +15,24 @@ The velocity field is modeled as a compact weighted superposition of localized a
 ```bash
 conda env create -f environment.yml
 conda activate affinegs
+python -m pip install ipywidgets==8.1.7
 python -m ipykernel install --user --name affinegs --display-name "AffineGS"
 ```
 
 The tested package versions are pinned in [requirements-validated.txt](requirements-validated.txt).
 [environment-validated.json](environment-validated.json) records the local validation
-platform: Python 3.8.5, PyTorch 1.13.1+cu117 and RTX 3090. The extensions were built
+platform: Linux, Python 3.8.5, PyTorch 1.13.1+cu117 and RTX 3090. The extensions were built
 with CUDA toolkit 11.2 and GCC 9; the PyTorch CUDA runtime is 11.7. These are recorded
 versions, not a claim that other versions were tested. A compatible NVIDIA driver,
 CUDA toolkit, C++ compiler and `ninja` executable are required for CUDA extension
 compilation. The Jupyter/VS Code frontend may run separately; select the AffineGS
-kernel. Chinese audit PDFs additionally use XeLaTeX and Noto CJK fonts.
+kernel. The extra `ipywidgets` installation supports the notebook progress bars.
+EXP_OTHER requires an NVIDIA CUDA GPU.
 
-The CUDA extensions are optional but recommended for faster AffineGS optimization and rendering. If a compatible CUDA toolkit and compiler are available, they can be built as follows:
+The Gaussian renderer is compiled through PyTorch JIT when CUDA training is initialized, so the CUDA toolkit, compiler and `ninja` must remain available. Build the CMax extension for fused IWE accumulation:
 
 ``` bash
 cd methods/affinegs/accelerators/cmax_fused
-python setup.py build_ext --inplace
-cd ../../../../
-
-cd methods/affinegs/accelerators/gaussian_renderer
 python setup.py build_ext --inplace
 cd ../../../../
 ```
@@ -55,7 +53,7 @@ warmed up outside benchmark timing.
 
 ## The experiments
 * [EXP1.ipynb](experiments/EXP1.ipynb): representation ablations, robustness and regularization sweeps, including paired sweeps with shared events and initialization.
-* [EXP2.ipynb](experiments/EXP2.ipynb): method comparison on synthetic flow fields and datasets.
+* [EXP2.ipynb](experiments/EXP2.ipynb): six-method comparison on three bundled synthetic flow fields, using velocity and gradient metrics.
 * [EXP3.ipynb](experiments/EXP3.ipynb): real-data flow estimation and visualization; saves velocity fields for appendix evaluation.
 * [EXP_APPENDIX.ipynb](experiments/EXP_APPENDIX.ipynb): density-control ablation and FWL/RSAT evaluation using saved EXP3 velocity fields.
 * [EXP_OTHER.ipynb](experiments/EXP_OTHER.ipynb): runtime, training-memory and Gaussian-count experiments.
@@ -65,7 +63,7 @@ warmed up outside benchmark timing.
 
 All five experiment notebooks contain inline figures or tables for browsing on GitHub. The paper's saved figures, metrics and velocity arrays are included directly under `output/`; local history and diagnostics remain ignored. EXP2 displays the saved results used in manuscript_revised_v2.
 
-Results are grouped under `EXP1/`, `EXP2/`, `EXP3/`, `EXP_OTHER/` and `APPENDIX/`. EXP3 uses `ebiv/` and `water/` with method-named figures and arrays. All appendix results share `APPENDIX/`. FWL, RSAT and EXP_OTHER tables are saved as CSV; Table 3 retains displayed precision and uses initial Gaussian counts for the paper parameter column.
+Results are grouped under `EXP1/`, `EXP2/`, `EXP3/`, `EXP_OTHER/` and `APPENDIX/`. EXP3 uses `ebiv/` and `water/` with method-named figures and arrays. All appendix results share `APPENDIX/`. FWL and RSAT export CSV files. The existing EXP_OTHER CSV files are saved snapshots at displayed precision; rerunning that notebook updates its displayed tables without exporting CSV. The saved `Table_03_Paper.csv` uses initial Gaussian counts for parameters, while the notebook reports final counts. GPU memory is the peak allocated memory from data upload through the end of optimization.
 
 ## Real-data result provenance
 
@@ -98,14 +96,14 @@ We evaluate the proposed method on both synthetic and real-world event-based dat
 Synthetic event streams are generated from predefined flow fields using an event simulation pipeline following our prior work in FED-PV [Wu et al., 2025]. The synthetic data include:
 - simple analytical flow fields, and
 - a large collection of flow fields derived from particle-based velocimetry datasets, adapted from the public PIV dataset repository:  
-  [https://github.com/shengzesnail/PIV_dataset](https://github.com/shengzesnail/PIV_dataset
-)
+  [PIV dataset repository](https://github.com/shengzesnail/PIV_dataset).
 
 **Real-world datasets.**  
 Real event data are captured using a practical event-based imaging velocimetry (EBIV) system. The evaluated flow scenarios include:
 - a water-tank flow by our in-house EBIV setup, and
 - a water-tank flow experiment by Willert and Klinner (2022).
 
+The repository includes synthetic NPZ examples and `data/water.hdf5`. The full adapted PIV dataset and the EBIV recording `data/real_old/ebiv_wallflow4_dense.h5` must be supplied separately. Set `DATA_ROOT` in EXP_APPENDIX and `COUNT_DATA_ROOT` in EXP_OTHER to the local PIV NPZ directory; check EXP_OTHER's `find_project_root()` if running a different checkout on the original machine.
 
 
 ## BibTeX
@@ -123,4 +121,4 @@ Real event data are captured using a practical event-based imaging velocimetry (
 ```
 
 ## Questions?
-For any questions regarding this work, please email me at [aijia@whut.edu.cn](mailto:aijia@whut.edu.cn), or the correspondece [yonglee@whut.edu.cn](mailto:yonglee@whut.edu.cn).
+For any questions regarding this work, please email me at [aijia@whut.edu.cn](mailto:aijia@whut.edu.cn), or the corresponding author at [yonglee@whut.edu.cn](mailto:yonglee@whut.edu.cn).
