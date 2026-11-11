@@ -121,4 +121,4 @@ The repository includes synthetic NPZ examples and `data/water.hdf5`. The full a
 ```
 
 ## Questions?
-For any questions regarding this work, please email me at [aijia@whut.edu.cn](mailto:aijia@whut.edu.cn), or the corresponding author at [yonglee@whut.edu.cn](mailto:yonglee@whut.edu.cn).
+For any questions regarding this work, please email the corresponding author at [yonglee@whut.edu.cn](mailto:yonglee@whut.edu.cn).
