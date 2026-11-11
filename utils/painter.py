@@ -594,7 +594,7 @@ def plot_vortex_line_panel(
         ax.plot(coord, gt_profile, **GT_STYLE)
         for idx in grp['indices']:
             name = estimators[idx]
-            ax.plot(coord, profiles[idx], color=colors[name], lw=1.5, label=name)
+            ax.plot(coord, profiles[idx], color=colors[name], lw=1.5, label=name.replace('_', '-'))
 
         ax.set_xlim(coord[0], coord[-1])
         ax.set_ylim(_ylim)
