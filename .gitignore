@@ -112,7 +112,11 @@ build/
 /experiments/spacetime_gaussian/
 /data/*.h5
 /data/*.hdf5
-/manuscript_revised.pdf
+/manuscript_revised*.pdf
 /EXP2_*.pdf
 /experiments/IWE_vote/
 /experiments/legacy/
+
+# Local-only historical implementations and development notebooks.
+/utils/flow_classifier_old.py
+/generator/generatorTest.ipynb
