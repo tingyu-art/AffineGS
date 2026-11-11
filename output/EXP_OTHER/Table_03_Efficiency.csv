@@ -1,0 +1,11 @@
+Method,Data,Resolution,Time Window,Temporal Bins,Events,Time (s),Learnable Params,Final Gaussians,GS Renderer,CMax Backend,Peak through Training (MiB),Throughput (MPix/s)
+ILK-VG,JHTDB-isotropic,256×256,0–3 ms,16,224683,1.125,,,—,—,,0.058
+OF-VG,JHTDB-isotropic,256×256,0–3 ms,16,224683,0.186,,,—,—,,0.353
+INR,JHTDB-isotropic,256×256,0–3 ms,16,224683,4.175,29122,,—,—,217.9,0.016
+ConstGS,JHTDB-isotropic,256×256,0–3 ms,,224683,0.629,1824,228,cuda,cuda,316.1,0.104
+AffineGS,JHTDB-isotropic,256×256,0–3 ms,,224683,0.656,3684,307,cuda,cuda,316.1,0.1
+ILK-VG,EBIV,1280×720,10–20 ms,21,410697,3.037,,,—,—,,0.303
+OF-VG,EBIV,1280×720,10–20 ms,21,410697,1.475,,,—,—,,0.625
+INR,EBIV,1280×720,10–20 ms,21,410697,42.821,29122,,—,—,3014.9,0.022
+ConstGS,EBIV,1280×720,10–20 ms,,410697,1.361,2336,292,cuda,cuda,590.2,0.677
+AffineGS,EBIV,1280×720,10–20 ms,,410697,1.399,5220,435,cuda,cuda,590.3,0.659

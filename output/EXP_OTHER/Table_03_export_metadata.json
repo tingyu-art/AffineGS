@@ -1,0 +1,10 @@
+{
+  "source_notebook": "experiments/EXP_OTHER.ipynb",
+  "source_notebook_sha256": "2470048fa7ed906f3e5ac5ac0b18ed5756ac9c2577a929656451f633046ccd46",
+  "source": "Saved notebook table outputs; exported without rerunning the experiment.",
+  "precision": "CSV/JSON retain displayed precision; unrounded raw measurements for this execution are not reconstructed.",
+  "detailed_parameter_counts": "Final learned parameter counts from the saved detailed table.",
+  "paper_parameter_counts": "Initial parameter counts: ConstGS 8*N, AffineGS 12*N, N=300/500; INR 29122.",
+  "memory": "Peak allocated GPU memory through optimization; paper table in decimal MB.",
+  "cases": 10
+}

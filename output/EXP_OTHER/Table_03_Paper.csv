@@ -1,0 +1,11 @@
+Method,Resolution (px),Time (s),Learnable Params,Peak through Training (MB)
+ILK-VG,256×256,1.1,,
+ILK-VG,1280×720,3.0,,
+OF-VG,256×256,0.2,,
+OF-VG,1280×720,1.5,,
+INR-based,256×256,4.2,29122,228.5
+INR-based,1280×720,42.8,29122,3161.4
+ConstGS,256×256,0.6,2400,331.5
+ConstGS,1280×720,1.4,4000,618.8
+AffineGS (Ours),256×256,0.7,3600,331.5
+AffineGS (Ours),1280×720,1.4,6000,619.0

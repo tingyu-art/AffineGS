@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "run_id": "2026-11-06T01:47:25+08:00",
+  "saved_at": "2026-11-06T01:48:02+08:00",
+  "config": {
+    "seed": 42,
+    "event_window_ms": 3.0,
+    "temporal_num_bins": 16,
+    "resolution": [
+      256,
+      256
+    ],
+    "flow_names": [
+      "JHTDB-isotropic",
+      "DNS-turbulence",
+      "SQG"
+    ],
+    "method_names": [
+      "ILK_VG",
+      "OF_VG",
+      "INR_EST",
+      "INR_VG",
+      "ConstGS",
+      "AffineGS"
+    ]
+  },
+  "source_sha256": {
+    "methods/method.py": "c21364baecea4d1d5ac760c6ca8f3dba0dee2c3257ea655a787f096e1b08368c",
+    "methods/affinegs/gaussian_flow/config.py": "cdde496095180119def764df17e3d0d22b6b0b6a3144fe7fa8949d8082b8a345",
+    "methods/affinegs/gaussian_flow/training.py": "7981b3646e307461a799289f52aec683bb6171872a21b9070eee8d5fce42454f",
+    "methods/affinegs/gaussian_flow/model.py": "12cd04cf569555457083090810c04e668116750e34f57cb5ddf2299fa62d47d5",
+    "generator/images.py": "adbd732b089295a2f28431e05a5a507ee8aba417d5970ac75e91f56939b8e30f",
+    "generator/flow.py": "f1937ed32f0d959adc9edbf67ccd61c3ea81cc1ceeb7099ce87b9c693ee46ce5",
+    "utils/metrics.py": "d7c5b4593a47e4673f18b5d41686f2dbb75d78cc40b3ff9611616667b5ee0c18"
+  },
+  "flow_input_sha256": {
+    "JHTDB-isotropic": "da9220c020dc07e8c635a4eb7116c123a6728e7218a31232a67ac2db1b8d54e1",
+    "DNS-turbulence": "f5df52adedd3fecec646f3ac602eba35895021be30c0c334ddf0ef461114cfb9",
+    "SQG": "1ca5575fe19be0f2d213ffa3b1901a502757dba98426258ce8d5e5e6c737a52d"
+  },
+  "artifacts": {
+    "output/EXP2/on_single_flow/single-flow-results.json": {
+      "sha256": "8b2b883c0f0439739e36c02211c394518cf98e5ac80963761a057369c1da36fb",
+      "size": 11048
+    },
+    "output/EXP2/on_single_flow/table1-velocity-metrics.csv": {
+      "sha256": "9acc3b97859fd2b1ec18d7f633257df96bbe8175c6f68758f435997e10948b42",
+      "size": 407
+    },
+    "output/EXP2/on_single_flow/table2-gradient-metrics.csv": {
+      "sha256": "927cef18bfa063cf60e79c2a6b287f34c89b0937be018720d0b875eea5316af6",
+      "size": 442
+    },
+    "output/EXP2/fig10.pdf": {
+      "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb",
+      "size": 103444
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic-metrics.json": {
+      "sha256": "c566725d1adec18016290b7544401fca1a08f68263dcdf87c8ece15f99661ae2",
+      "size": 2708
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic-vorticity.npz": {
+      "sha256": "fffbf287e4cd9827068c8f1ae58a5dba553f3fa16d9516687c4159b5d288657c",
+      "size": 1689441
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic-vorticity.pdf": {
+      "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb",
+      "size": 103444
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_ILK_VG.svg": {
+      "sha256": "46511dc2db50d0c366b73a8c46a108d210c3c3d5cfd99ef467983f4d44d5b6e7",
+      "size": 98126
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_OF_VG.svg": {
+      "sha256": "1f355cb54ac73be155b8144d03e8cbd73ceb6a93ee094498fd5c2c8ba9225ee8",
+      "size": 102787
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_INR_EST.svg": {
+      "sha256": "fdff14a39f900d2b3f78d7df249410341536c5236ae5dd275bc88d9a19c15cd5",
+      "size": 94305
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_INR_VG.svg": {
+      "sha256": "648d12c795a7bda6e598b2df0a63d448ce813e2fe3894e2b62d994c12a44a7bc",
+      "size": 99261
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_ConstGS.svg": {
+      "sha256": "f7a86f498e42e7b26ff8de39cfc9dc5934ac637bbc8643e979e41dfc3c41668e",
+      "size": 107464
+    },
+    "output/EXP2/on_single_flow/JHTDB_isotropic_AffineGS.svg": {
+      "sha256": "86aaedb44da524c0aef22cc376796e37e7d65d338a4df47b2e1e8b0b72ae1be9",
+      "size": 100715
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence-metrics.json": {
+      "sha256": "e4508b64262c8a3d01c41f9bdf6500f048e770d408c3281fcb739f022cfd8567",
+      "size": 2706
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence-vorticity.npz": {
+      "sha256": "91ec797b057100fa89623db9d6ed7cd2fb2b49ecf7870110abcfad759291842b",
+      "size": 1694410
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence-vorticity.pdf": {
+      "sha256": "5e074309b4131ccb559b0425343209971a4594eab4580c1fb867e84522193451",
+      "size": 109465
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_ILK_VG.svg": {
+      "sha256": "90843eb6880d536a337792694a6c51899a3375bbd954af9cbb3b552fac161287",
+      "size": 105377
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_OF_VG.svg": {
+      "sha256": "9918f0d1a49ed4698601d8e404891d87fd8e133096a7bb6f07cfca58835dee77",
+      "size": 109977
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_INR_EST.svg": {
+      "sha256": "4e081ec05d38e958819e698803fa9aad9d84dd7a0652a791c9d4c679f9c123cc",
+      "size": 103753
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_INR_VG.svg": {
+      "sha256": "e2e5d4ef9f6c9d8540df26bae54fa1dfdce282bcf062b285fe53ba6e1c5f9f01",
+      "size": 105060
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_ConstGS.svg": {
+      "sha256": "f3d0c3adcf12c3f60201c500b31a61f0b69bad7f56b00932fbb011d20f3ffe07",
+      "size": 94558
+    },
+    "output/EXP2/on_single_flow/DNS_turbulence_AffineGS.svg": {
+      "sha256": "d42cfc06cfb10b45421019ecd2d2978bfd64e70b1ea0f3cce9e34ad7a07977c7",
+      "size": 90295
+    },
+    "output/EXP2/on_single_flow/SQG-metrics.json": {
+      "sha256": "3a4b90bcbe40388844a68f4927f5bd34d051fb4385c58bf08cf473a035cf3882",
+      "size": 2670
+    },
+    "output/EXP2/on_single_flow/SQG-vorticity.npz": {
+      "sha256": "7a6936425ece5827d6d8bffe4990f48c42f6c8aef9c2b760ae7d3947bcb84970",
+      "size": 1696054
+    },
+    "output/EXP2/on_single_flow/SQG-vorticity.pdf": {
+      "sha256": "3d18e9728db0381c517bde6086dafc4faf19999df9ad1791dada20937e678d15",
+      "size": 133738
+    },
+    "output/EXP2/on_single_flow/SQG_ILK_VG.svg": {
+      "sha256": "5ff7c158cce56af9b32d7916e33bbc69ed096093e51cb2e4e38e9bded3dc2aee",
+      "size": 94770
+    },
+    "output/EXP2/on_single_flow/SQG_OF_VG.svg": {
+      "sha256": "a182d1eb90fdb53f8eab0221530178c1dcfe99365995772f24c3334a08789e0e",
+      "size": 99131
+    },
+    "output/EXP2/on_single_flow/SQG_INR_EST.svg": {
+      "sha256": "cdea051c7346c5ae03ae7228127bf1c3ef8d7b4d8e1543c8965db98de09c5ade",
+      "size": 99728
+    },
+    "output/EXP2/on_single_flow/SQG_INR_VG.svg": {
+      "sha256": "d78d5ca30440ed2329e55da5b705f5758c81213f641adea6098d77f600eb2dea",
+      "size": 95802
+    },
+    "output/EXP2/on_single_flow/SQG_ConstGS.svg": {
+      "sha256": "fdbeb4899bbf1f190afd97c4685f90be44c2966da56d6cabf4cbb3bf4cfebc7a",
+      "size": 110426
+    },
+    "output/EXP2/on_single_flow/SQG_AffineGS.svg": {
+      "sha256": "6b93b0a2b30df25eca3118813249a3d3fc16c525d5aac86902ed015a62307e75",
+      "size": 106661
+    }
+  },
+  "presentation_updates": [
+    {
+      "updated_at": "2026-11-11T17:23:26.740665+08:00",
+      "change": "Use hyphens in vorticity-profile legend labels; regenerate from unchanged saved arrays.",
+      "artifacts": {
+        "output/EXP2/on_single_flow/JHTDB_isotropic-vorticity.pdf": {
+          "previous_sha256": "6e68ebb12dbbb6dadde93f31b7931f724d6d32ec49038730fc9d9308813c73bb",
+          "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb"
+        },
+        "output/EXP2/on_single_flow/DNS_turbulence-vorticity.pdf": {
+          "previous_sha256": "ecf192ba1cca4ecfce7cf82b6b21e2aa1aa05a348e8100b1fb9c879fe0ce54cd",
+          "sha256": "5e074309b4131ccb559b0425343209971a4594eab4580c1fb867e84522193451"
+        },
+        "output/EXP2/on_single_flow/SQG-vorticity.pdf": {
+          "previous_sha256": "84b308a7a37ffb5320da3a13b97a7f349793c7cd890d40ea3296c9b8a42b1280",
+          "sha256": "3d18e9728db0381c517bde6086dafc4faf19999df9ad1791dada20937e678d15"
+        },
+        "output/EXP2/fig10.pdf": {
+          "previous_sha256": "6e68ebb12dbbb6dadde93f31b7931f724d6d32ec49038730fc9d9308813c73bb",
+          "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb"
+        }
+      }
+    }
+  ]
+}

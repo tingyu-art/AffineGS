@@ -1,0 +1,72 @@
+[
+  {
+    "Method": "ILK-VG",
+    "Resolution (px)": "256×256",
+    "Time (s)": 1.1,
+    "Learnable Params": null,
+    "Peak through Training (MB)": null
+  },
+  {
+    "Method": "ILK-VG",
+    "Resolution (px)": "1280×720",
+    "Time (s)": 3.0,
+    "Learnable Params": null,
+    "Peak through Training (MB)": null
+  },
+  {
+    "Method": "OF-VG",
+    "Resolution (px)": "256×256",
+    "Time (s)": 0.2,
+    "Learnable Params": null,
+    "Peak through Training (MB)": null
+  },
+  {
+    "Method": "OF-VG",
+    "Resolution (px)": "1280×720",
+    "Time (s)": 1.5,
+    "Learnable Params": null,
+    "Peak through Training (MB)": null
+  },
+  {
+    "Method": "INR-based",
+    "Resolution (px)": "256×256",
+    "Time (s)": 4.2,
+    "Learnable Params": 29122,
+    "Peak through Training (MB)": 228.5
+  },
+  {
+    "Method": "INR-based",
+    "Resolution (px)": "1280×720",
+    "Time (s)": 42.8,
+    "Learnable Params": 29122,
+    "Peak through Training (MB)": 3161.4
+  },
+  {
+    "Method": "ConstGS",
+    "Resolution (px)": "256×256",
+    "Time (s)": 0.6,
+    "Learnable Params": 2400,
+    "Peak through Training (MB)": 331.5
+  },
+  {
+    "Method": "ConstGS",
+    "Resolution (px)": "1280×720",
+    "Time (s)": 1.4,
+    "Learnable Params": 4000,
+    "Peak through Training (MB)": 618.8
+  },
+  {
+    "Method": "AffineGS (Ours)",
+    "Resolution (px)": "256×256",
+    "Time (s)": 0.7,
+    "Learnable Params": 3600,
+    "Peak through Training (MB)": 331.5
+  },
+  {
+    "Method": "AffineGS (Ours)",
+    "Resolution (px)": "1280×720",
+    "Time (s)": 1.4,
+    "Learnable Params": 6000,
+    "Peak through Training (MB)": 619.0
+  }
+]
