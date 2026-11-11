@@ -51,10 +51,6 @@
       "sha256": "927cef18bfa063cf60e79c2a6b287f34c89b0937be018720d0b875eea5316af6",
       "size": 442
     },
-    "output/EXP2/fig10.pdf": {
-      "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb",
-      "size": 103444
-    },
     "output/EXP2/on_single_flow/JHTDB_isotropic-metrics.json": {
       "sha256": "c566725d1adec18016290b7544401fca1a08f68263dcdf87c8ece15f99661ae2",
       "size": 2708
@@ -180,10 +176,6 @@
         "output/EXP2/on_single_flow/SQG-vorticity.pdf": {
           "previous_sha256": "84b308a7a37ffb5320da3a13b97a7f349793c7cd890d40ea3296c9b8a42b1280",
           "sha256": "3d18e9728db0381c517bde6086dafc4faf19999df9ad1791dada20937e678d15"
-        },
-        "output/EXP2/fig10.pdf": {
-          "previous_sha256": "6e68ebb12dbbb6dadde93f31b7931f724d6d32ec49038730fc9d9308813c73bb",
-          "sha256": "d52a11927f682f8d3321e1265713d59214da9a36d512d6f24343b7926f4f55fb"
         }
       }
     }

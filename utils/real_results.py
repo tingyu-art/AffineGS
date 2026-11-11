@@ -3,10 +3,11 @@
 This module only saves/loads results. It never trains a method or changes seeds.
 """
 from contextlib import contextmanager
-from datetime import datetime, timezone, timedelta
+import csv
 import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import random
@@ -62,8 +63,14 @@ def rng_fingerprints():
     return result
 
 
-def _now_id():
-    return datetime.now(timezone(timedelta(hours=8))).strftime('%Y%m%dT%H%M%S%f') + '-' + uuid.uuid4().hex[:8]
+def _numbered_path(directory, stem, suffix):
+    directory = Path(directory)
+    path = directory / (stem + suffix)
+    index = 2
+    while path.exists():
+        path = directory / f'{stem}-{index:02d}{suffix}'
+        index += 1
+    return path
 
 
 def _write_json(path, data):
@@ -89,7 +96,8 @@ def read_manifest(run):
     run = Path(run).resolve()
     with (run / 'manifest.json').open(encoding='utf-8') as f:
         m = json.load(f)
-    if m.get('schema_version') != 1 or m.get('run_id') != run.name:
+    if (m.get('schema_version') != 1 or not m.get('run_id')
+            or m.get('directory_name', m['run_id']) != run.name):
         raise ValueError('Invalid real-data run manifest; legacy files cannot be relabelled as a verified run')
     return m
 
@@ -99,8 +107,19 @@ def create_real_run(root, case, input_path, source_type, events, window_ms):
     validate_events(events, 720, 1280)
     if case not in ('ebiv', 'water'):
         raise ValueError('case must be ebiv or water')
-    run = root / 'output' / 'EXP3' / 'runs' / case / _now_id()
-    run.mkdir(parents=True, exist_ok=False)
+    parent = root / 'output' / 'EXP3'
+    parent.mkdir(parents=True, exist_ok=True)
+    indices = [1] if (parent / case).exists() else []
+    indices += [int(p.name[len(case) + 1:]) for p in parent.glob(case + '-*')
+                if p.is_dir() and p.name[len(case) + 1:].isdigit()]
+    index = max(indices, default=0) + 1
+    while True:
+        run = parent / (case if index == 1 else f'{case}-{index:02d}')
+        try:
+            run.mkdir()
+            break
+        except FileExistsError:
+            index += 1
     event_array = as_array(events)
     with (run / 'events.npy').open('xb') as f: np.save(f, event_array, allow_pickle=False)
     m = dict(schema_version=1, run_id=run.name, case=case, H=720, W=1280,
@@ -146,7 +165,7 @@ def save_real_flow(run, method, flow, events, root, config, rng_before, elapsed_
     with _locked(run):
         ensure_method_available(run, method)
         with path.open('xb') as f:
-            np.savez_compressed(f, flow=flow, run_id=run.name, flow_name=m['case'], method_name=method,
+            np.savez_compressed(f, flow=flow, run_id=m['run_id'], flow_name=m['case'], method_name=method,
                                 event_sha256=m['event_sha256'], flow_sha256=array_hash(flow), H=m['H'], W=m['W'])
         m = read_manifest(run)
         row = dict(file=path.name, file_sha256=file_hash(path), flow_sha256=array_hash(flow),
@@ -167,7 +186,7 @@ def load_real_flow(run, method, events=None):
         raise ValueError('Saved velocity file changed or has an invalid path')
     with np.load(path, allow_pickle=False) as z:
         flow = z['flow'].copy()
-        if str(z['run_id']) != run.name or str(z['method_name']) != method or str(z['event_sha256']) != m['event_sha256']:
+        if str(z['run_id']) != m['run_id'] or str(z['method_name']) != method or str(z['event_sha256']) != m['event_sha256']:
             raise ValueError('Velocity metadata does not match the selected run')
     if array_hash(flow) != row['flow_sha256'] or flow.shape != (2, m['H'], m['W']) or not np.isfinite(flow).all():
         raise ValueError('Velocity content hash/shape mismatch')
@@ -177,8 +196,8 @@ def load_real_flow(run, method, events=None):
 def figure_path(run, method):
     ensure = read_manifest(run)['methods'].get(method)
     if ensure is None: raise FileNotFoundError('Save the velocity field before plotting')
-    directory = Path(run) / 'figures'; directory.mkdir(exist_ok=True)
-    return directory / (method + '-' + _now_id() + '.pdf')
+    directory = Path(run)
+    return _numbered_path(directory, method.replace('_', '-'), '.pdf')
 
 
 def register_real_figure(run, method, path, plotted_flow):
@@ -186,8 +205,8 @@ def register_real_figure(run, method, path, plotted_flow):
     flow, row = load_real_flow(run, method)
     if array_hash(plotted_flow) != row['flow_sha256']:
         raise ValueError('The plotted flow differs from the saved velocity')
-    if path.parent != run / 'figures' or not path.is_file():
-        raise ValueError('Figure must be saved inside this run figures directory')
+    if path.parent != run or not path.is_file():
+        raise ValueError('Figure must be saved inside this scene directory')
     with _locked(run):
         m = read_manifest(run)
         m['methods'][method]['figures'].append(dict(file=str(path.relative_to(run)),
@@ -198,7 +217,12 @@ def register_real_figure(run, method, path, plotted_flow):
 def select_real_run(root, case, run_dir=None):
     if run_dir is not None: run = Path(run_dir).resolve()
     else:
-        candidates = sorted((Path(root) / 'output' / 'EXP3' / 'runs' / case).glob('*/manifest.json'))
+        folder = Path(root) / 'output' / 'EXP3'
+        candidates = [p for p in folder.glob(case + '*/manifest.json')
+                      if p.parent.name == case or
+                      (p.parent.name.startswith(case + '-') and p.parent.name[len(case) + 1:].isdigit())]
+        candidates.sort(key=lambda p: 1 if p.parent.name == case
+                        else int(p.parent.name[len(case) + 1:]))
         if not candidates: raise FileNotFoundError('No verified run. Generate the six fields and figures in EXP3 first.')
         run = candidates[-1].parent
     if read_manifest(run)['case'] != case: raise ValueError('Selected run belongs to a different scene')
@@ -235,11 +259,21 @@ def save_real_metrics(run, metric, summary, provenance):
         for figure in row['figures']:
             if file_hash(Path(run) / figure['file']) != figure['file_sha256']:
                 raise ValueError('EXP3 figure was modified before metric saving')
-    folder = Path(run) / 'metrics'; folder.mkdir(exist_ok=True)
-    path = folder / (metric + '-' + _now_id() + '.json')
-    payload = dict(summary, provenance=provenance)
-    with path.open('x', encoding='utf-8') as f: json.dump(payload, f, indent=2, allow_nan=False)
+    exp3 = next(p for p in Path(run).resolve().parents
+                if p.name == 'EXP3' and p.parent.name == 'output')
+    folder = exp3.parent / 'APPENDIX'; folder.mkdir(exist_ok=True)
+    path = _numbered_path(folder, metric + '-' + m['case'], '.csv')
+    key = metric.lower()
+    rows = [dict(Method=method, **{metric: values[key]})
+            for method, values in summary.get('methods', {}).items()]
+    with path.open('x', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['Method', metric], lineterminator='\n')
+        writer.writeheader()
+        writer.writerows(rows)
     with _locked(run):
-        m = read_manifest(run); m['evaluations'].append(dict(metric=metric, file=str(path.relative_to(run)), file_sha256=file_hash(path)))
+        m = read_manifest(run)
+        m['evaluations'].append(dict(metric=metric, file=os.path.relpath(path, run),
+            file_sha256=file_hash(path), provenance=provenance,
+            summary={k: v for k, v in summary.items() if k != 'methods'}))
         _write_json(Path(run) / 'manifest.json', m)
     return path

@@ -63,29 +63,15 @@ warmed up outside benchmark timing.
 
 ## Saved experiment outputs
 
-All five main experiment notebooks retain inline figures or HTML tables for browsing on GitHub, including [EXP_OTHER](experiments/EXP_OTHER.ipynb) and [EXP_APPENDIX](experiments/EXP_APPENDIX.ipynb). Saved outputs include the EXP1 paired-axis alignment, EXP_OTHER rerun, and EXP2 synchronization with the manuscript's saved results. Invalid progress-widget output entries are removed; saved figures, tables and other text outputs are retained.
+All five experiment notebooks contain inline figures or tables for browsing on GitHub. The paper's saved figures, metrics and velocity arrays are included directly under `output/`; local history and diagnostics remain ignored. EXP2 displays the saved results used in manuscript_revised_v2.
 
-Experiments save figures, metrics and run records directly under `output/`. The outputs used in manuscript_revised_v2 are included in Git: EXP1 ablations and robustness plots, EXP2 synthetic comparisons, EXP3 real-data fields and figures, and appendix evaluations. Other generated files remain local. Figures and tables are also embedded in the notebooks; there is no separate `results/` directory.
-
-EXP2 displays the figures and metrics from the saved run used by manuscript_revised_v2 (2026-11-06T01:47:25+08:00), restored without retraining. EXP3 and EXP_APPENDIX retain their original saved outputs. EXP1 retains its original data and styles; only the user-requested paired RMSE/AEE axis limits, scales and ticks were aligned for the Jacobian, frozen-geometry and density plots. Training was not rerun for that display change. Some notebook outputs predate the separately saved result files; those files retain their own run provenance. EXP_OTHER retains its saved efficiency and Gaussian-count outputs. Table 3 exports preserve notebook display precision; paper parameter counts use the initial Gaussian configurations. Timings are single-pass observations on a shared GPU.
+Results are grouped under `EXP1/`, `EXP2/`, `EXP3/`, `EXP_OTHER/` and `APPENDIX/`. EXP3 uses `ebiv/` and `water/` with method-named figures and arrays. All appendix results share `APPENDIX/`. FWL, RSAT and EXP_OTHER tables are saved as CSV; Table 3 retains displayed precision and uses initial Gaussian counts for the paper parameter column.
 
 ## Real-data result provenance
 
-In EXP3, run the scene-selection cell once to create
-`output/EXP3/runs/<scene>/<run_id>/`. Keep that run selected while choosing the six
-methods with the existing notebook controls. Save the figure after each method.
-Each method's velocity file is immutable; to retrain it, rerun scene selection to
-start a new run. Figures are rendered from the saved velocity and their hashes
-are attached to the same manifest.
+In EXP3, scene selection creates `output/EXP3/<scene>/`. Repeated runs use numbered suffixes such as `water-02/`. Keep the same directory selected while saving all six methods. Saved velocity arrays remain immutable, and figure and event hashes are recorded in `manifest.json`.
 
-The real-data section of EXP_APPENDIX reads a selected EXP3 run and does not
-retrain either Gaussian method. Set `REAL_RUN_DIR` to the directory used by the
-paper figure. Its default selects the newest run for that scene and rejects
-incomplete runs; it never fills gaps with legacy files. Event content, recording
-file, velocity and figure hashes are checked. FWL/RSAT JSON files contain those
-same flow hashes and use unique filenames under the run's `metrics/` directory.
-The old `output/EXP3/flow_fields/` files remain historical artifacts and are not
-silently promoted to verified results.
+EXP_APPENDIX evaluates the saved EXP3 fields. Set `REAL_RUN_DIR` to select a specific scene directory; the default selects the newest numbered run and rejects incomplete results. FWL and RSAT export CSV files to `output/APPENDIX/`, with their flow and figure provenance retained in the scene manifest.
 
 ## Event input contract
 
